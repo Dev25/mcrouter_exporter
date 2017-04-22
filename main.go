@@ -54,9 +54,8 @@ type Exporter struct {
 	resultShadow        *prometheus.Desc
 	resultAll           *prometheus.Desc
 	resultAllCount      *prometheus.Desc
-
-	clients *prometheus.Desc
-	servers *prometheus.Desc
+	clients             *prometheus.Desc
+	servers             *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -100,7 +99,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		// Commands
 		commands: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "commands"),
 			"Average number of received requests per second drilled down by operation.",
@@ -113,7 +111,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"cmd"},
 			nil,
 		),
-		// Command Out
 		commandOut: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "command_out"),
 			"Average number of sent normal (non-shadow, non-failover) requests per second drilled down by operation.",
@@ -144,7 +141,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"cmd"},
 			nil,
 		),
-		// Config
 		configAge: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "config_age"),
 			"How long ago (in seconds) mcrouter has reconfigured.",
@@ -169,7 +165,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		// Misc
 		devNulllRequests: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "dev_null_requests"),
 			"Number of requests sent to DevNullRoute.",
@@ -200,21 +195,18 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		// Clients
 		clients: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "clients"),
 			"Number of connected clients.",
 			nil,
 			nil,
 		),
-		// Servers
 		servers: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "servers"),
 			"Number of connected memcached servers.",
 			[]string{"state"},
 			nil,
 		),
-		// Request
 		requests: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "request"),
 			"TODO.",
@@ -321,7 +313,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.commandArgs, prometheus.GaugeValue, 1, s["commandargs"])
 	ch <- prometheus.MustNewConstMetric(e.pid, prometheus.GaugeValue, parse(s, "pid"))
 
-	// Command
+	// Commands
 	for _, op := range []string{"get", "set", "delete", "other", "lease_get", "lease_set"} {
 		key := "cmd_" + op
 		ch <- prometheus.MustNewConstMetric(
@@ -333,6 +325,17 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			e.commandOutAll, prometheus.CounterValue, parse(s, key+"_out_all"), op)
 	}
+
+	ch <- prometheus.MustNewConstMetric(
+		e.devNulllRequests, prometheus.CounterValue, parse(s, "dev_null_requests"))
+	ch <- prometheus.MustNewConstMetric(
+		e.duration, prometheus.GaugeValue, parse(s, "duration_us"))
+	ch <- prometheus.MustNewConstMetric(
+		e.fibersAllocated, prometheus.GaugeValue, parse(s, "fibers_allocated"))
+	ch <- prometheus.MustNewConstMetric(
+		e.proxyReqsProcessing, prometheus.GaugeValue, parse(s, "proxy_reqs_processing"))
+	ch <- prometheus.MustNewConstMetric(
+		e.proxyReqsWaiting, prometheus.GaugeValue, parse(s, "proxy_reqs_waiting"))
 
 	// Config
 	ch <- prometheus.MustNewConstMetric(
@@ -365,10 +368,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			e.resultAllCount, prometheus.CounterValue, parse(s, key+"_all_count"), op)
 	}
-
-	// Fibres
-	ch <- prometheus.MustNewConstMetric(
-		e.fibersAllocated, prometheus.CounterValue, parse(s, "fibers_allocated"))
 
 	// Clients
 	ch <- prometheus.MustNewConstMetric(
