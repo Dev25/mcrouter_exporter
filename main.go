@@ -23,14 +23,13 @@ const (
 
 // Exporter collects metrics from a mcrouter server.
 type Exporter struct {
-	conn                *net.Conn
+	conn *net.Conn
+
 	up                  *prometheus.Desc
-	startTime           *prometheus.Desc
 	uptime              *prometheus.Desc
 	version             *prometheus.Desc
 	commandArgs         *prometheus.Desc
-	parentPid           *prometheus.Desc
-	childPid            *prometheus.Desc
+	pid                 *prometheus.Desc
 	commands            *prometheus.Desc
 	commandCount        *prometheus.Desc
 	commandOut          *prometheus.Desc
@@ -95,15 +94,9 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"commandargs"},
 			nil,
 		),
-		parentPid: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "parent_pid"),
+		pid: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "pid"),
 			"Process id of process that started mcrouter.",
-			nil,
-			nil,
-		),
-		childPid: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "child_pid"),
-			"Process id of mcrouter instance.",
 			nil,
 			nil,
 		),
@@ -326,6 +319,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.uptime, prometheus.CounterValue, parse(s, "uptime"))
 	ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 	ch <- prometheus.MustNewConstMetric(e.commandArgs, prometheus.GaugeValue, 1, s["commandargs"])
+	ch <- prometheus.MustNewConstMetric(e.pid, prometheus.GaugeValue, parse(s, "pid"))
 
 	// Command
 	for _, op := range []string{"get", "set", "delete", "other", "lease_get", "lease_set"} {
