@@ -1,6 +1,6 @@
 PKG := github.com/dev25/mcrouter_exporter
-IMAGE := mcrouter-exporter
-OUT := exporter
+IMAGE := quay.io/dev25/mcrouter-exporter
+OUT := mcrouter_exporter
 
 # Build info
 REVISION := $(shell git describe --always --long --dirty)
@@ -14,6 +14,9 @@ FLAGS := "-X github.com/prometheus/common/version.Version=${VERSION} \
 	-X github.com/prometheus/common/version.BuildDate=${BUILD_DATE}"
 
 all: build
+
+setup:
+	go get -v -u ./...
 
 fmt:
 	@go fmt
@@ -31,6 +34,10 @@ run:
 	./$(OUT)
 
 clean:
-	-@rm -f ${OUT}
+	-@rm -f ${OUT} ${OUT}_docker
+
+docker:
+	CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo -o ${OUT}_docker .
+	docker build -t $(IMAGE) .
 
 .PHONY: all build test docker vet clean
