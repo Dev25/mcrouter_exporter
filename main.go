@@ -210,7 +210,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 		// Servers
 		servers: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "servers"),
-			"Number of connected memcache servers.",
+			"Number of connected memcached servers.",
 			[]string{"state"},
 			nil,
 		),
@@ -267,7 +267,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 	}
 }
 
-// Describe describes all the metrics exported by the memcached exporter. It
+// Describe describes all the metrics exported by the mcrouter exporter. It
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up
@@ -304,7 +304,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.servers
 }
 
-// Collect fetches the statistics from the configured memcached server, and
+// Collect fetches the statistics from the configured mcrouter server, and
 // delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	s, err := getStats(*e.conn)
@@ -427,7 +427,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Fprintln(os.Stdout, version.Print("memcached_exporter"))
+		fmt.Fprintln(os.Stdout, version.Print("mcrouter_exporter"))
 		os.Exit(0)
 	}
 
