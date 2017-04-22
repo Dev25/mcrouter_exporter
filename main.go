@@ -69,12 +69,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		startTime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "start_time"),
-			"UNIX timestamp of mcrouter startup time.",
-			nil,
-			nil,
-		),
 		uptime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
 			"How long ago (in seconds) mcrouter has started.",
@@ -265,9 +259,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up
 	ch <- e.uptime
 	ch <- e.version
-	ch <- e.startTime
-	ch <- e.parentPid
-	ch <- e.childPid
+	ch <- e.pid
 	ch <- e.commands
 	ch <- e.commandCount
 	ch <- e.commandOut
