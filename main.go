@@ -39,7 +39,7 @@ type Exporter struct {
 	configFailures      *prometheus.Desc
 	configLastAttempt   *prometheus.Desc
 	configLastSuccess   *prometheus.Desc
-	devNulllRequests    *prometheus.Desc
+	devNullRequests    *prometheus.Desc
 	duration            *prometheus.Desc
 	fibersAllocated     *prometheus.Desc
 	proxyReqsProcessing *prometheus.Desc
@@ -149,7 +149,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		devNulllRequests: prometheus.NewDesc(
+		devNullRequests: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "dev_null_requests"),
 			"Number of requests sent to DevNullRoute.",
 			nil,
@@ -283,7 +283,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.configFailures
 	ch <- e.configLastAttempt
 	ch <- e.configLastSuccess
-	ch <- e.devNulllRequests
+	ch <- e.devNullRequests
 	ch <- e.duration
 	ch <- e.fibersAllocated
 	ch <- e.proxyReqsProcessing
@@ -334,7 +334,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	ch <- prometheus.MustNewConstMetric(
-		e.devNulllRequests, prometheus.CounterValue, parse(s, "dev_null_requests"))
+		e.devNullRequests, prometheus.CounterValue, parse(s, "dev_null_requests"))
 	ch <- prometheus.MustNewConstMetric(
 		e.duration, prometheus.GaugeValue, parse(s, "duration_us"))
 	ch <- prometheus.MustNewConstMetric(
