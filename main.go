@@ -57,6 +57,7 @@ type Exporter struct {
 	cpuSeconds          *prometheus.Desc
 	residentMemory      *prometheus.Desc
 	virtualMemory       *prometheus.Desc
+	asynclogRequests    *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -257,6 +258,12 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
+		asynclogRequests: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "asynclog_requests"),
+			"Number of failed deletes written to spool file.",
+			nil,
+			nil,
+		),
 	}
 }
 
@@ -294,6 +301,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.cpuSeconds
 	ch <- e.residentMemory
 	ch <- e.virtualMemory
+	ch <- e.asynclogRequests
 }
 
 // Collect fetches the statistics from the configured mcrouter server, and
@@ -382,6 +390,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.cpuSeconds, prometheus.CounterValue, parse(s, "ps_user_time_sec")+parse(s, "ps_system_time_sec"))
 	ch <- prometheus.MustNewConstMetric(e.residentMemory, prometheus.CounterValue, parse(s, "ps_rss"))
 	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, parse(s, "ps_vsize"))
+
+	ch <- prometheus.MustNewConstMetric(e.asynclogRequests, prometheus.CounterValue, parse(s, "asynclog_requests"))
 }
 
 // Parse a string into a 64 bit float suitable for  Prometheus
