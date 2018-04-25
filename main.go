@@ -26,7 +26,7 @@ type Exporter struct {
 	conn *net.Conn
 
 	up                  *prometheus.Desc
-	uptime              *prometheus.Desc
+	startTime           *prometheus.Desc
 	version             *prometheus.Desc
 	commandArgs         *prometheus.Desc
 	commands            *prometheus.Desc
@@ -68,9 +68,9 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		uptime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
-			"How long ago (in seconds) mcrouter has started.",
+		startTime: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "start_time_seconds"),
+			"The timestamp of mcrouter daemon start.",
 			nil,
 			nil,
 		),
@@ -250,7 +250,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up
-	ch <- e.uptime
+	ch <- e.startTime
 	ch <- e.version
 	ch <- e.commands
 	ch <- e.commandCount
@@ -292,7 +292,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
 	// Parse basic stats
-	ch <- prometheus.MustNewConstMetric(e.uptime, prometheus.CounterValue, parse(s, "uptime"))
+	ch <- prometheus.MustNewConstMetric(e.startTime, prometheus.CounterValue, parse(s, "start_time"))
 	ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 	ch <- prometheus.MustNewConstMetric(e.commandArgs, prometheus.GaugeValue, 1, s["commandargs"])
 
