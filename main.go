@@ -54,6 +54,9 @@ type Exporter struct {
 	resultAllCount      *prometheus.Desc
 	clients             *prometheus.Desc
 	servers             *prometheus.Desc
+	cpuSeconds          *prometheus.Desc
+	residentMemory      *prometheus.Desc
+	virtualMemory       *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -236,6 +239,24 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"reply"},
 			nil,
 		),
+		cpuSeconds: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "cpu_seconds_total"),
+			"Number of seconds mcrouter spent on CPU.",
+			nil,
+			nil,
+		),
+		residentMemory: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "resident_memory_bytes"),
+			"Number of bytes of resident memory.",
+			nil,
+			nil,
+		),
+		virtualMemory: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "virtual_memory_bytes"),
+			"Number of bytes of virtual memory.",
+			nil,
+			nil,
+		),
 	}
 }
 
@@ -270,6 +291,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.resultAllCount
 	ch <- e.clients
 	ch <- e.servers
+	ch <- e.cpuSeconds
+	ch <- e.residentMemory
+	ch <- e.virtualMemory
 }
 
 // Collect fetches the statistics from the configured mcrouter server, and
@@ -352,6 +376,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			e.servers, prometheus.GaugeValue, parse(s, key), op)
 	}
+
+	// Process stats
+	ch <- prometheus.MustNewConstMetric(
+		e.cpuSeconds, prometheus.CounterValue, parse(s, "ps_user_time_sec")+parse(s, "ps_system_time_sec"))
+	ch <- prometheus.MustNewConstMetric(e.residentMemory, prometheus.CounterValue, parse(s, "ps_rss"))
+	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, parse(s, "ps_vsize"))
 }
 
 // Parse a string into a 64 bit float suitable for  Prometheus
