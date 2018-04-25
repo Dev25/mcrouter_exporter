@@ -36,7 +36,6 @@ type Exporter struct {
 	commandOutShadow    *prometheus.Desc
 	commandOutAll       *prometheus.Desc
 	commandOutCount     *prometheus.Desc
-	configAge           *prometheus.Desc
 	configFailures      *prometheus.Desc
 	configLastAttempt   *prometheus.Desc
 	configLastSuccess   *prometheus.Desc
@@ -126,12 +125,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			prometheus.BuildFQName(namespace, "", "command_out_count"),
 			"Total number of sent requests per second drilled down by operation.",
 			[]string{"cmd"},
-			nil,
-		),
-		configAge: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "config_age"),
-			"How long ago (in seconds) mcrouter has reconfigured.",
-			nil,
 			nil,
 		),
 		configFailures: prometheus.NewDesc(
@@ -259,7 +252,6 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.commandOutShadow
 	ch <- e.commandOutAll
 	ch <- e.commandOutCount
-	ch <- e.configAge
 	ch <- e.configFailures
 	ch <- e.configLastAttempt
 	ch <- e.configLastSuccess
@@ -322,13 +314,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Config
 	ch <- prometheus.MustNewConstMetric(
-		e.configAge, prometheus.CounterValue, parse(s, "config_age"))
-	ch <- prometheus.MustNewConstMetric(
 		e.configFailures, prometheus.CounterValue, parse(s, "config_failures"))
 	ch <- prometheus.MustNewConstMetric(
-		e.configLastAttempt, prometheus.GaugeValue, parse(s, "config_last_success"))
+		e.configLastAttempt, prometheus.GaugeValue, parse(s, "config_last_attempt"))
 	ch <- prometheus.MustNewConstMetric(
-		e.configLastSuccess, prometheus.GaugeValue, parse(s, "config_failures"))
+		e.configLastSuccess, prometheus.GaugeValue, parse(s, "config_last_success"))
 
 	// Request
 	for _, op := range []string{"error", "replied", "sent", "success"} {
