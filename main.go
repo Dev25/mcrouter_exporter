@@ -362,7 +362,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Result Reply
-	for _, op := range []string{"connect_error", "connect_timeout", "data_timeout", "error", "local_error", "tko"} {
+	// See ProxyRequestLogger.cpp
+	for _, op := range []string{"busy", "connect_error", "connect_timeout", "data_timeout", "error", "local_error", "tko"} {
 		key := "result_" + op
 		ch <- prometheus.MustNewConstMetric(
 			e.results, prometheus.GaugeValue, parse(s, key), op)
