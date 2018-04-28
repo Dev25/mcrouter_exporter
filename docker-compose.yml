@@ -1,0 +1,25 @@
+version: '3'
+services:
+
+  exporter:
+    image: devan2502/mcrouter_exporter
+    depends_on:
+      - mcrouter
+    ports:
+      - 9151:9151
+    command: mcrouter_exporter --mcrouter.address="mcrouter:5000"
+
+  mcrouter:
+    image: devan2502/mcrouter
+    depends_on:
+      - cache
+    ports:
+      - "5000"
+    command: >
+      mcrouter --config-str='{"pools":{"A":{"servers":["cache:11211"]}},"route":"PoolRoute|A"}' -p 5000
+
+  cache:
+    image: memcached:alpine
+    ports:
+      - "11211"
+
