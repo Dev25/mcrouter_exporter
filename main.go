@@ -39,7 +39,7 @@ type Exporter struct {
 	configFailures      *prometheus.Desc
 	configLastAttempt   *prometheus.Desc
 	configLastSuccess   *prometheus.Desc
-	devNullRequests    *prometheus.Desc
+	devNullRequests     *prometheus.Desc
 	duration            *prometheus.Desc
 	fibersAllocated     *prometheus.Desc
 	proxyReqsProcessing *prometheus.Desc
