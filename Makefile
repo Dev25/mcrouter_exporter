@@ -39,5 +39,6 @@ clean:
 docker:
 	CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo -o ${OUT}_docker .
 	docker build -t $(IMAGE) .
+	rm -f ${OUT}_docker
 
 .PHONY: all build test docker vet clean
