@@ -411,6 +411,11 @@ func getStats(conn net.Conn) (map[string]string, error) {
 	fmt.Fprintf(conn, "stats all\r\n")
 	reader := bufio.NewReader(conn)
 
+	// Iterate over the lines and extract the metric name and value(s)
+	// example lines:
+	// 	 [STAT version 37.0.0
+	//	 [STAT commandargs --option1 value --flag2
+	//	 END
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -421,7 +426,9 @@ func getStats(conn net.Conn) (map[string]string, error) {
 			break
 		}
 
-		result := strings.Split(line, " ")
+		// Split the line into 3 components, anything after the metric name should
+		// be considered as the metric value.
+		result := strings.SplitN(line, " ", 3)
 		value := strings.TrimRight(result[2], "\r\n")
 		m[result[1]] = value
 	}
