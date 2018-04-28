@@ -306,7 +306,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.pid, prometheus.GaugeValue, parse(s, "pid"))
 
 	// Commands
-	for _, op := range []string{"get", "set", "delete", "other", "lease_get", "lease_set"} {
+	for _, op := range []string{"get", "set", "delete", "lease_get", "lease_set"} {
 		key := "cmd_" + op
 		ch <- prometheus.MustNewConstMetric(
 			e.commands, prometheus.GaugeValue, parse(s, key), op)
