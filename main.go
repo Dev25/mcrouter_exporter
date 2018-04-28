@@ -26,10 +26,9 @@ type Exporter struct {
 	conn *net.Conn
 
 	up                  *prometheus.Desc
-	uptime              *prometheus.Desc
+	startTime           *prometheus.Desc
 	version             *prometheus.Desc
 	commandArgs         *prometheus.Desc
-	pid                 *prometheus.Desc
 	commands            *prometheus.Desc
 	commandCount        *prometheus.Desc
 	commandOut          *prometheus.Desc
@@ -37,11 +36,10 @@ type Exporter struct {
 	commandOutShadow    *prometheus.Desc
 	commandOutAll       *prometheus.Desc
 	commandOutCount     *prometheus.Desc
-	configAge           *prometheus.Desc
 	configFailures      *prometheus.Desc
 	configLastAttempt   *prometheus.Desc
 	configLastSuccess   *prometheus.Desc
-	devNulllRequests    *prometheus.Desc
+	devNullRequests    *prometheus.Desc
 	duration            *prometheus.Desc
 	fibersAllocated     *prometheus.Desc
 	proxyReqsProcessing *prometheus.Desc
@@ -56,6 +54,10 @@ type Exporter struct {
 	resultAllCount      *prometheus.Desc
 	clients             *prometheus.Desc
 	servers             *prometheus.Desc
+	cpuSeconds          *prometheus.Desc
+	residentMemory      *prometheus.Desc
+	virtualMemory       *prometheus.Desc
+	asynclogRequests    *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -69,9 +71,9 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		uptime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "uptime_seconds"),
-			"How long ago (in seconds) mcrouter has started.",
+		startTime: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "start_time_seconds"),
+			"The timestamp of mcrouter daemon start.",
 			nil,
 			nil,
 		),
@@ -85,12 +87,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			prometheus.BuildFQName(namespace, "", "commandargs"),
 			"Command args used.",
 			[]string{"commandargs"},
-			nil,
-		),
-		pid: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "pid"),
-			"Process id of process that started mcrouter.",
-			nil,
 			nil,
 		),
 		commands: prometheus.NewDesc(
@@ -135,12 +131,6 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"cmd"},
 			nil,
 		),
-		configAge: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "config_age"),
-			"How long ago (in seconds) mcrouter has reconfigured.",
-			nil,
-			nil,
-		),
 		configFailures: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "config_failures"),
 			"How long ago (in seconds) mcrouter has reconfigured.",
@@ -159,7 +149,7 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
-		devNulllRequests: prometheus.NewDesc(
+		devNullRequests: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "dev_null_requests"),
 			"Number of requests sent to DevNullRoute.",
 			nil,
@@ -250,6 +240,30 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			[]string{"reply"},
 			nil,
 		),
+		cpuSeconds: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "cpu_seconds_total"),
+			"Number of seconds mcrouter spent on CPU.",
+			nil,
+			nil,
+		),
+		residentMemory: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "resident_memory_bytes"),
+			"Number of bytes of resident memory.",
+			nil,
+			nil,
+		),
+		virtualMemory: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "virtual_memory_bytes"),
+			"Number of bytes of virtual memory.",
+			nil,
+			nil,
+		),
+		asynclogRequests: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "asynclog_requests"),
+			"Number of failed deletes written to spool file.",
+			nil,
+			nil,
+		),
 	}
 }
 
@@ -257,9 +271,8 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up
-	ch <- e.uptime
+	ch <- e.startTime
 	ch <- e.version
-	ch <- e.pid
 	ch <- e.commands
 	ch <- e.commandCount
 	ch <- e.commandOut
@@ -267,11 +280,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.commandOutShadow
 	ch <- e.commandOutAll
 	ch <- e.commandOutCount
-	ch <- e.configAge
 	ch <- e.configFailures
 	ch <- e.configLastAttempt
 	ch <- e.configLastSuccess
-	ch <- e.devNulllRequests
+	ch <- e.devNullRequests
 	ch <- e.duration
 	ch <- e.fibersAllocated
 	ch <- e.proxyReqsProcessing
@@ -286,6 +298,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.resultAllCount
 	ch <- e.clients
 	ch <- e.servers
+	ch <- e.cpuSeconds
+	ch <- e.residentMemory
+	ch <- e.virtualMemory
+	ch <- e.asynclogRequests
 }
 
 // Collect fetches the statistics from the configured mcrouter server, and
@@ -300,13 +316,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
 	// Parse basic stats
-	ch <- prometheus.MustNewConstMetric(e.uptime, prometheus.CounterValue, parse(s, "uptime"))
+	ch <- prometheus.MustNewConstMetric(e.startTime, prometheus.CounterValue, parse(s, "start_time"))
 	ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 	ch <- prometheus.MustNewConstMetric(e.commandArgs, prometheus.GaugeValue, 1, s["commandargs"])
-	ch <- prometheus.MustNewConstMetric(e.pid, prometheus.GaugeValue, parse(s, "pid"))
 
 	// Commands
-	for _, op := range []string{"get", "set", "delete", "lease_get", "lease_set"} {
+	for _, op := range []string{"add", "append", "cas", "decr", "flushall", "flushre", "get", "incr", "metaget", "prepend", "replace", "touch", "set", "delete", "lease_get", "lease_set"} {
 		key := "cmd_" + op
 		ch <- prometheus.MustNewConstMetric(
 			e.commands, prometheus.GaugeValue, parse(s, key), op)
@@ -319,7 +334,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	ch <- prometheus.MustNewConstMetric(
-		e.devNulllRequests, prometheus.CounterValue, parse(s, "dev_null_requests"))
+		e.devNullRequests, prometheus.CounterValue, parse(s, "dev_null_requests"))
 	ch <- prometheus.MustNewConstMetric(
 		e.duration, prometheus.GaugeValue, parse(s, "duration_us"))
 	ch <- prometheus.MustNewConstMetric(
@@ -331,13 +346,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Config
 	ch <- prometheus.MustNewConstMetric(
-		e.configAge, prometheus.CounterValue, parse(s, "config_age"))
-	ch <- prometheus.MustNewConstMetric(
 		e.configFailures, prometheus.CounterValue, parse(s, "config_failures"))
 	ch <- prometheus.MustNewConstMetric(
-		e.configLastAttempt, prometheus.GaugeValue, parse(s, "config_last_success"))
+		e.configLastAttempt, prometheus.GaugeValue, parse(s, "config_last_attempt"))
 	ch <- prometheus.MustNewConstMetric(
-		e.configLastSuccess, prometheus.GaugeValue, parse(s, "config_failures"))
+		e.configLastSuccess, prometheus.GaugeValue, parse(s, "config_last_success"))
 
 	// Request
 	for _, op := range []string{"error", "replied", "sent", "success"} {
@@ -349,7 +362,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Result Reply
-	for _, op := range []string{"connect_error", "connect_timeout", "data_timeout", "error", "local_error", "tko"} {
+	// See ProxyRequestLogger.cpp
+	for _, op := range []string{"busy", "connect_error", "connect_timeout", "data_timeout", "error", "local_error", "tko"} {
 		key := "result_" + op
 		ch <- prometheus.MustNewConstMetric(
 			e.results, prometheus.GaugeValue, parse(s, key), op)
@@ -371,6 +385,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			e.servers, prometheus.GaugeValue, parse(s, key), op)
 	}
+
+	// Process stats
+	ch <- prometheus.MustNewConstMetric(
+		e.cpuSeconds, prometheus.CounterValue, parse(s, "ps_user_time_sec")+parse(s, "ps_system_time_sec"))
+	ch <- prometheus.MustNewConstMetric(e.residentMemory, prometheus.CounterValue, parse(s, "ps_rss"))
+	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, parse(s, "ps_vsize"))
+
+	ch <- prometheus.MustNewConstMetric(e.asynclogRequests, prometheus.CounterValue, parse(s, "asynclog_requests"))
 }
 
 // Parse a string into a 64 bit float suitable for  Prometheus

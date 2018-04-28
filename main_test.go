@@ -20,7 +20,7 @@ func handleRequest(conn net.Conn) {
 	if err != nil {
 		fmt.Println("Error reading:", err.Error())
 	}
-	ret := []byte("STAT pid 1\r\nSTAT parent_pid 0\r\nSTAT fibers_allocated 1\r\nEND\r\n")
+	ret := []byte("STAT start_time 1\r\nSTAT version 0.0\r\nSTAT fibers_allocated 1\r\nEND\r\n")
 	conn.Write(ret)
 	conn.Close()
 }
@@ -46,8 +46,8 @@ func TestStatsParsing(t *testing.T) {
 			stats, _ := getStats(client)
 			Convey("It should parse the stats into a string map", func() {
 				expected := make(map[string]string)
-				expected["pid"] = "1"
-				expected["parent_pid"] = "0"
+				expected["start_time"] = "1"
+				expected["version"] = "0.0"
 				expected["fibers_allocated"] = "1"
 				So(stats, ShouldResemble, expected)
 			})
