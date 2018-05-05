@@ -16,7 +16,7 @@ FLAGS := "-X github.com/prometheus/common/version.Version=${VERSION} \
 all: build
 
 setup:
-	go get -v -u ./...
+	dep ensure -v
 
 fmt:
 	@go fmt
@@ -30,15 +30,7 @@ test: fmt vet
 build:
 	go build -i -v -o ${OUT} -ldflags=$(FLAGS)
 
-run:
-	./$(OUT)
-
 clean:
-	-@rm -f ${OUT} ${OUT}_docker
-
-docker:
-	CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo -o ${OUT}_docker .
-	docker build -t $(IMAGE) .
-	rm -f ${OUT}_docker
+	-@rm -f ${OUT}
 
 .PHONY: all build test docker vet clean
