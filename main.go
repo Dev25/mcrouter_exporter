@@ -441,7 +441,7 @@ func main() {
 		address       = flag.String("mcrouter.address", "localhost:5000", "mcrouter server address.")
 		timeout       = flag.Duration("mcrouter.timeout", time.Second, "mcrouter connect timeout.")
 		showVersion   = flag.Bool("version", false, "Print version information.")
-		listenAddress = flag.String("web.listen-address", ":9151", "Address to listen on for web interface and telemetry.")
+		listenAddress = flag.String("web.listen-address", ":9442", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	)
 	flag.Parse()

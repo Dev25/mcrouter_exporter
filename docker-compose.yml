@@ -6,7 +6,7 @@ services:
     depends_on:
       - mcrouter
     ports:
-      - 9151:9151
+      - 9442:9442
     command: mcrouter_exporter --mcrouter.address="mcrouter:5000"
 
   mcrouter:

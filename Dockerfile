@@ -5,5 +5,5 @@ RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o /app
 
 FROM quay.io/prometheus/busybox:latest
 COPY --from=builder /app /usr/local/bin/mcrouter_exporter
-EXPOSE 9151
+EXPOSE 9442
 CMD ["/usr/local/bin/mcrouter_exporter"]

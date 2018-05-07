@@ -6,7 +6,7 @@ Prometheus exporter for [mcrouter](https://github.com/facebook/mcrouter), a popu
 Building
 ---
 
-By default the `mcrouter_exporter` will scrape mcrouter metrics on `localhost:5000` and expose the metrics for Prometheus consumption on `0.0.0.0:9151`. This can be configured using either `-mcrouter.address` or `web.listen-address` flags.
+By default the `mcrouter_exporter` will scrape mcrouter metrics on `localhost:5000` and expose the metrics for Prometheus consumption on `0.0.0.0:9442`. This can be configured using either `-mcrouter.address` or `web.listen-address` flags.
 
 ```
 go get -v -u github.com/Dev25/mcrouter_exporter
