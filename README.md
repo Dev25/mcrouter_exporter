@@ -15,18 +15,12 @@ make
 ./mcrouter_exporter
 ```
 
-A Dockerfile has also been provided to build Docker images.
-```
-make docker IMAGE=mcrouter_exporter
-docker run --rm mcrouter_exporter
-```
-
 Docker Images
 ----
 Docker images have been created for both mcrouter and mcrouter_exporter, these can be found at:
 
-- `devan2502/mcrouter:v37`
-- `devan2502/mcrouter_exporter`
+- [quay.io/dev25/mcrouter:v37](https://quay.io/repository/dev25/mcrouter?tab=tags)
+- [quay.io/dev25/mcrouter_exporter](https://quay.io/repository/dev25/mcrouter_exporter?tab=tags)
 
 
 Collectors
@@ -40,7 +34,7 @@ The exporter collects a number of statistics from mcrouter:
 # TYPE mcrouter_clients counter
 # HELP mcrouter_command_count Total number of received requests drilled down by operation.
 # TYPE mcrouter_command_count counter
-# HELP mcrouter_command_out Average number of sent normal (non-shadow, non-failover) requests per second drilled 
+# HELP mcrouter_command_out Average number of sent normal (non-shadow, non-failover) requests per second drilled
 # TYPE mcrouter_command_out counter
 # HELP mcrouter_command_out_all Total number of sent requests per second (failover + shadow + normal)
 # TYPE mcrouter_command_out_all counter
@@ -72,13 +66,13 @@ The exporter collects a number of statistics from mcrouter:
 # TYPE mcrouter_request_count counter
 # HELP mcrouter_resident_memory_bytes Number of bytes of resident memory.
 # TYPE mcrouter_resident_memory_bytes counter
-# HELP mcrouter_result_all Average number of replies per second received for requests drilled down by reply 
+# HELP mcrouter_result_all Average number of replies per second received for requests drilled down by reply
 # TYPE mcrouter_result_all gauge
 # HELP mcrouter_result_all_count TODO.
 # TYPE mcrouter_result_all_count counter
 # HELP mcrouter_result_count Total number of replies received drilled down by reply result
 # TYPE mcrouter_result_count counter
-# HELP mcrouter_results Average number of replies per second received for normal requests drilled down by reply 
+# HELP mcrouter_results Average number of replies per second received for normal requests drilled down by reply
 # TYPE mcrouter_results gauge
 # HELP mcrouter_servers Number of connected memcached servers.
 # TYPE mcrouter_servers gauge

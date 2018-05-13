@@ -1,5 +1,4 @@
 PKG := github.com/dev25/mcrouter_exporter
-IMAGE := quay.io/dev25/mcrouter-exporter
 OUT := mcrouter_exporter
 
 # Build info
@@ -33,4 +32,4 @@ build:
 clean:
 	-@rm -f ${OUT}
 
-.PHONY: all build test docker vet clean
+.PHONY: all setup fmt test build clean
