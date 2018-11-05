@@ -23,7 +23,8 @@ const (
 
 // Exporter collects metrics from a mcrouter server.
 type Exporter struct {
-	conn *net.Conn
+	server  string
+	timeout time.Duration
 
 	up                  *prometheus.Desc
 	startTime           *prometheus.Desc
@@ -62,9 +63,9 @@ type Exporter struct {
 
 // NewExporter returns an initialized exporter.
 func NewExporter(server string, timeout time.Duration) *Exporter {
-	conn, _ := net.DialTimeout("tcp", server, timeout)
 	return &Exporter{
-		conn: &conn,
+		server:  server,
+		timeout: timeout,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"Could the mcrouter server be reached.",
@@ -307,12 +308,23 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect fetches the statistics from the configured mcrouter server, and
 // delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	s, err := getStats(*e.conn)
+
+	conn, err := net.DialTimeout("tcp", e.server, e.timeout)
+	if err != nil {
+		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+		log.Errorf("Failed to collect stats from mcrouter: %s.", err)
+		return
+	}
+	defer conn.Close()
+
+	s, err := getStats(conn)
+
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
 		log.Errorf("Failed to collect stats from mcrouter: %s", err)
 		return
 	}
+
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
 	// Parse basic stats
