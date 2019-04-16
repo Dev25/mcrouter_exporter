@@ -309,7 +309,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
-	conn, err := net.DialTimeout("tcp", e.server, e.timeout)
+	network := "tcp"
+	if strings.Contains(e.server, "/") {
+		network = "unix"
+	}
+
+	conn, err := net.DialTimeout(network, e.server, e.timeout)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
 		log.Errorf("Failed to collect stats from mcrouter: %s.", err)
@@ -450,7 +455,7 @@ func getStats(conn net.Conn) (map[string]string, error) {
 
 func main() {
 	var (
-		address       = flag.String("mcrouter.address", "localhost:5000", "mcrouter server address.")
+		address       = flag.String("mcrouter.address", "localhost:5000", "mcrouter server TCP address (tcp4/tcp6) or UNIX socket path")
 		timeout       = flag.Duration("mcrouter.timeout", time.Second, "mcrouter connect timeout.")
 		showVersion   = flag.Bool("version", false, "Print version information.")
 		listenAddress = flag.String("web.listen-address", ":9442", "Address to listen on for web interface and telemetry.")
