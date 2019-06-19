@@ -87,3 +87,38 @@ The exporter collects a number of statistics from mcrouter:
 # HELP mcrouter_virtual_memory_bytes Number of bytes of virtual memory.
 # TYPE mcrouter_virtual_memory_bytes counter
 ```
+
+Optional metrics available when setting the mcrouter.server_metrics argument:
+
+```
+# HELP mcrouter_server_duration_us Average time of processing a request per-server (i.e. receiving request and sending a reply).
+# TYPE mcrouter_server_duration_us gauge
+# HELP mcrouter_server_memcached_connect_timeout_count Number of memcached connect timeouts (per-server metric).
+# TYPE mcrouter_server_memcached_connect_timeout_count counter
+# HELP mcrouter_server_memcached_deleted_count Number of memcached DELETED replies (per-server metric).
+# TYPE mcrouter_server_memcached_deleted_count counter
+# HELP mcrouter_server_memcached_exists_count Number of memcached EXISTS replies (per-server metric).
+# TYPE mcrouter_server_memcached_exists_count counter
+# HELP mcrouter_server_memcached_found_count Number of memcached FOUND replies (per-server metric).
+# TYPE mcrouter_server_memcached_found_count counter
+# HELP mcrouter_server_memcached_not_found_count Number of memcached NOT_FOUND replies (per-server metric).
+# TYPE mcrouter_server_memcached_not_found_count counter
+# HELP mcrouter_server_memcached_not_stored_count Number of memcached NOT_STORED replies (per-server metric).
+# TYPE mcrouter_server_memcached_not_stored_count counter
+# HELP mcrouter_server_memcached_remote_error_count Number of memcached remote errors (per-server metric).
+# TYPE mcrouter_server_memcached_remote_error_count counter
+# HELP mcrouter_server_memcached_stored_count Number of memcached STORED replies (per-server metric).
+# TYPE mcrouter_server_memcached_stored_count counter
+# HELP mcrouter_server_memcached_timeout_count Number of memcached timeouts (per-server metric).
+# TYPE mcrouter_server_memcached_timeout_count counter
+# HELP mcrouter_server_memcached_tko Number of times memcached has been marked as TKO (per-server metric).
+# TYPE mcrouter_server_memcached_tko counter
+# HELP mcrouter_server_memcached_touched_count Number of memcached TOUCHED replies (per-server metric).
+# TYPE mcrouter_server_memcached_touched_count counter
+# HELP mcrouter_server_proxy_reqs_processing Requests mcrouter started routing but didn't receive a reply yet (per-server metric)
+# TYPE mcrouter_server_proxy_reqs_processing gauge
+# HELP mcrouter_server_proxy_reqs_retrans_ratio Requests mcrouter started but that required retransmission.
+# TYPE mcrouter_server_proxy_reqs_retrans_ratio gauge
+# HELP mcrouter_server_proxy_reqs_waiting Requests queued up and not routed yet (per-server metric)
+# TYPE mcrouter_server_proxy_reqs_waiting gauge
+```

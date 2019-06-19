@@ -23,49 +23,67 @@ const (
 
 // Exporter collects metrics from a mcrouter server.
 type Exporter struct {
-	server  string
-	timeout time.Duration
+	server       string
+	timeout      time.Duration
+	server_stats bool
 
-	up                  *prometheus.Desc
-	startTime           *prometheus.Desc
-	version             *prometheus.Desc
-	commandArgs         *prometheus.Desc
-	commands            *prometheus.Desc
-	commandCount        *prometheus.Desc
-	commandOut          *prometheus.Desc
-	commandOutFailover  *prometheus.Desc
-	commandOutShadow    *prometheus.Desc
-	commandOutAll       *prometheus.Desc
-	commandOutCount     *prometheus.Desc
-	configFailures      *prometheus.Desc
-	configLastAttempt   *prometheus.Desc
-	configLastSuccess   *prometheus.Desc
-	devNullRequests     *prometheus.Desc
-	duration            *prometheus.Desc
-	fibersAllocated     *prometheus.Desc
-	proxyReqsProcessing *prometheus.Desc
-	proxyReqsWaiting    *prometheus.Desc
-	requests            *prometheus.Desc
-	requestCount        *prometheus.Desc
-	results             *prometheus.Desc
-	resultCount         *prometheus.Desc
-	resultFailover      *prometheus.Desc
-	resultShadow        *prometheus.Desc
-	resultAll           *prometheus.Desc
-	resultAllCount      *prometheus.Desc
-	clients             *prometheus.Desc
-	servers             *prometheus.Desc
-	cpuSeconds          *prometheus.Desc
-	residentMemory      *prometheus.Desc
-	virtualMemory       *prometheus.Desc
-	asynclogRequests    *prometheus.Desc
+	up                            *prometheus.Desc
+	startTime                     *prometheus.Desc
+	version                       *prometheus.Desc
+	commandArgs                   *prometheus.Desc
+	commands                      *prometheus.Desc
+	commandCount                  *prometheus.Desc
+	commandOut                    *prometheus.Desc
+	commandOutFailover            *prometheus.Desc
+	commandOutShadow              *prometheus.Desc
+	commandOutAll                 *prometheus.Desc
+	commandOutCount               *prometheus.Desc
+	configFailures                *prometheus.Desc
+	configLastAttempt             *prometheus.Desc
+	configLastSuccess             *prometheus.Desc
+	devNullRequests               *prometheus.Desc
+	duration                      *prometheus.Desc
+	fibersAllocated               *prometheus.Desc
+	proxyReqsProcessing           *prometheus.Desc
+	proxyReqsWaiting              *prometheus.Desc
+	requests                      *prometheus.Desc
+	requestCount                  *prometheus.Desc
+	results                       *prometheus.Desc
+	resultCount                   *prometheus.Desc
+	resultFailover                *prometheus.Desc
+	resultShadow                  *prometheus.Desc
+	resultAll                     *prometheus.Desc
+	resultAllCount                *prometheus.Desc
+	clients                       *prometheus.Desc
+	servers                       *prometheus.Desc
+	cpuSeconds                    *prometheus.Desc
+	residentMemory                *prometheus.Desc
+	virtualMemory                 *prometheus.Desc
+	asynclogRequests              *prometheus.Desc
+	serverDuration                *prometheus.Desc
+	serverProxyReqsProcessing     *prometheus.Desc
+	serverProxyInflightReqs       *prometheus.Desc
+	serverProxyRetransRatio       *prometheus.Desc
+	serverMemcachedStored         *prometheus.Desc
+	serverMemcachedNotStored      *prometheus.Desc
+	serverMemcachedFound          *prometheus.Desc
+	serverMemcachedNotFound       *prometheus.Desc
+	serverMemcachedDeleted        *prometheus.Desc
+	serverMemcachedTouched        *prometheus.Desc
+	serverMemcachedExists         *prometheus.Desc
+	serverMemcachedRemoteError    *prometheus.Desc
+	serverMemcachedConnectTimeout *prometheus.Desc
+	serverMemcachedTimeout        *prometheus.Desc
+	serverMemcachedTKO            *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
-func NewExporter(server string, timeout time.Duration) *Exporter {
+func NewExporter(server string, timeout time.Duration, server_stats bool) *Exporter {
 	return &Exporter{
-		server:  server,
-		timeout: timeout,
+		server:       server,
+		timeout:      timeout,
+		server_stats: server_stats,
+
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"Could the mcrouter server be reached.",
@@ -265,6 +283,96 @@ func NewExporter(server string, timeout time.Duration) *Exporter {
 			nil,
 			nil,
 		),
+		serverDuration: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_duration_us"),
+			"Average time of processing a request per-server (i.e. receiving request and sending a reply).",
+			[]string{"server"},
+			nil,
+		),
+		serverProxyReqsProcessing: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_proxy_reqs_processing"),
+			"Requests mcrouter started routing but didn't receive a reply yet (per-server metric)",
+			[]string{"server"},
+			nil,
+		),
+		serverProxyInflightReqs: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_proxy_reqs_waiting"),
+			"Requests queued up and not routed yet (per-server metric)",
+			[]string{"server"},
+			nil,
+		),
+		serverProxyRetransRatio: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_proxy_reqs_retrans_ratio"),
+			"Requests mcrouter started but that required retransmission.",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedStored: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_stored_count"),
+			"Number of memcached STORED replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedNotStored: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_not_stored_count"),
+			"Number of memcached NOT_STORED replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedFound: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_found_count"),
+			"Number of memcached FOUND replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedNotFound: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_not_found_count"),
+			"Number of memcached NOT_FOUND replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedDeleted: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_deleted_count"),
+			"Number of memcached DELETED replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedTouched: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_touched_count"),
+			"Number of memcached TOUCHED replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedExists: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_exists_count"),
+			"Number of memcached EXISTS replies (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedRemoteError: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_remote_error_count"),
+			"Number of memcached remote errors (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedConnectTimeout: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_connect_timeout_count"),
+			"Number of memcached connect timeouts (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedTimeout: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_timeout_count"),
+			"Number of memcached timeouts (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedTKO: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_tko"),
+			"Number of times memcached has been marked as TKO (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
 	}
 }
 
@@ -303,6 +411,24 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.residentMemory
 	ch <- e.virtualMemory
 	ch <- e.asynclogRequests
+
+	if e.server_stats {
+		ch <- e.serverDuration
+		ch <- e.serverProxyReqsProcessing
+		ch <- e.serverProxyInflightReqs
+		ch <- e.serverProxyRetransRatio
+		ch <- e.serverMemcachedStored
+		ch <- e.serverMemcachedNotStored
+		ch <- e.serverMemcachedFound
+		ch <- e.serverMemcachedNotFound
+		ch <- e.serverMemcachedDeleted
+		ch <- e.serverMemcachedTouched
+		ch <- e.serverMemcachedExists
+		ch <- e.serverMemcachedRemoteError
+		ch <- e.serverMemcachedConnectTimeout
+		ch <- e.serverMemcachedTimeout
+		ch <- e.serverMemcachedTKO
+	}
 }
 
 // Collect fetches the statistics from the configured mcrouter server, and
@@ -410,11 +536,59 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, parse(s, "ps_vsize"))
 
 	ch <- prometheus.MustNewConstMetric(e.asynclogRequests, prometheus.CounterValue, parse(s, "asynclog_requests"))
+
+	if e.server_stats {
+		// Per-server stats
+		s1, err := getServerStats(conn)
+
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			log.Errorf("Failed to collect server stats from mcrouter: %s", err)
+			return
+		}
+
+		for server, metrics := range s1 {
+			ch <- prometheus.MustNewConstMetric(
+				e.serverDuration, prometheus.GaugeValue, parse(metrics, "avg_latency_us"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverProxyReqsProcessing, prometheus.GaugeValue, parse(metrics, "pending_reqs"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverProxyInflightReqs, prometheus.GaugeValue, parse(metrics, "inflight_reqs"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverProxyRetransRatio, prometheus.GaugeValue, parse(metrics, "avg_retrans_ratio"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedStored, prometheus.CounterValue, parse(metrics, "stored"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedNotStored, prometheus.CounterValue, parse(metrics, "not_stored"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedFound, prometheus.CounterValue, parse(metrics, "found"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedNotFound, prometheus.CounterValue, parse(metrics, "not_found"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedDeleted, prometheus.CounterValue, parse(metrics, "deleted"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedTouched, prometheus.CounterValue, parse(metrics, "touched"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedExists, prometheus.CounterValue, parse(metrics, "exists"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedRemoteError, prometheus.CounterValue, parse(metrics, "remote_error"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedConnectTimeout, prometheus.CounterValue, parse(metrics, "connect_timeout"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedTimeout, prometheus.CounterValue, parse(metrics, "timeout"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedTKO, prometheus.CounterValue, parse(metrics, "tko"), server)
+		}
+	}
 }
 
 // Parse a string into a 64 bit float suitable for  Prometheus
 func parse(stats map[string]string, key string) float64 {
-	v, err := strconv.ParseFloat(stats[key], 64)
+	val, ok := stats[key]
+	if !ok {
+		return 0.0
+	}
+	v, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		log.Errorf("Failed to parse %s %q: %s", key, stats[key], err)
 		v = math.NaN()
@@ -453,6 +627,92 @@ func getStats(conn net.Conn) (map[string]string, error) {
 	return m, nil
 }
 
+// Get detailed per-server stats from mcrouter using a basic TCP connection
+func getServerStats(conn net.Conn) (map[string]map[string]string, error) {
+	m := make(map[string]map[string]string)
+	fmt.Fprintf(conn, "stats servers\r\n")
+	reader := bufio.NewReader(conn)
+
+	// Iterate over the lines and extract the metric name and value(s)
+	// example lines:
+	// 	 STAT 10.64.16.110:11211:ascii:plain:notcompressed-1000 avg_latency_us:302.991
+	//        pending_reqs:0 inflight_reqs:0 avg_retrans_ratio:0 max_retrans_ratio:0
+	//        min_retrans_ratio:0 up:5; deleted:4875 touched:33069 found:112675373
+	//        notfound:3493823 notstored:149776 stored:3250883 exists:2653 remote_error:32
+	//	 END
+	// In the same line there are two type of info:
+	// * per-server stats about latency, requests, etc.. up to the ';' - (ProxyDestinationBase states)
+	// * per-server breakdown of the memcached responses (STORED, DELETED, etc..) - (Carbon results)
+	//   The memcached responses are listed in carbon_result.thrift, and they are returned/appended only
+	//   when > 0. Special logic needs to be implemented then to set the ones not diplayed to zero,
+	//   since Prometheus doesn't really like metrics appearing/disappearing.
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+
+		if line == "END\r\n" {
+			break
+		}
+
+		line_sanitized := strings.TrimRight(line, "\r\n")
+
+		// Split the line in 2 macro-components
+		result := strings.SplitN(line_sanitized, ";", 2)
+
+		server_metrics := strings.Split(strings.Trim(result[0], " "), " ")
+
+		// WARNING: the memcached's result states (from ';' onward) might not be
+		// available all the times, since they are added only if some data is present.
+		// There are use cases, like mcrouter just started without any commands processed,
+		// that do not expose any result. The exporter needs to add some defensive code
+		// to avoid panic states.
+		memcached_responses_metrics := []string{}
+		if len(result) == 2 {
+			memcached_responses_metrics = strings.Split(strings.Trim(result[1], " "), " ")
+		}
+
+		// The server id is always the second element of the row (after STAT),
+		// and it will be used as label in all the metrics
+		server_id := server_metrics[1]
+		m[server_id] = make(map[string]string)
+
+		// The following for loops assume that the two lines to parse
+		// have the format: metric1:value1 metric2:value2 etc..
+		// The server_id string is the only exception since it is composed
+		// by more than one ':'.
+		for i := 2; i < len(server_metrics); i++ {
+			metric_value := strings.SplitN(server_metrics[i], ":", 2)
+			if len(metric_value) == 2 {
+				m[server_id][metric_value[0]] = metric_value[1]
+			}
+		}
+
+		// See carbon_result.thrift in mcrouter's codebase
+		// and also https://github.com/facebook/mcrouter/wiki/Error-Handling
+		memcached_states := []string{"deleted", "touched", "found", "notfound", "notstored", "stored",
+			"exists", "timeout", "connect_timeout", "tko", "remote_error",
+		}
+
+		// Set all the metrics to zero to create a baseline. mcrouter reports only
+		// the states that have values > 0, but Prometheus doesn't like metrics
+		// appearing and disappearing.
+		for _, state := range memcached_states {
+			m[server_id][state] = "0"
+		}
+
+		for i := 0; i < len(memcached_responses_metrics); i++ {
+			metric_value := strings.SplitN(memcached_responses_metrics[i], ":", 2)
+			if len(metric_value) == 2 {
+				m[server_id][metric_value[0]] = metric_value[1]
+			}
+		}
+	}
+
+	return m, nil
+}
+
 func main() {
 	var (
 		address       = flag.String("mcrouter.address", "localhost:5000", "mcrouter server TCP address (tcp4/tcp6) or UNIX socket path")
@@ -460,6 +720,7 @@ func main() {
 		showVersion   = flag.Bool("version", false, "Print version information.")
 		listenAddress = flag.String("web.listen-address", ":9442", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+		serverMetrics = flag.Bool("mcrouter.server_metrics", false, "Collect per-server metrics.")
 	)
 	flag.Parse()
 
@@ -471,7 +732,7 @@ func main() {
 	log.Infoln("Starting mcrouter_exporter", version.Info())
 	log.Infoln("Build context", version.BuildContext())
 
-	prometheus.MustRegister(NewExporter(*address, *timeout))
+	prometheus.MustRegister(NewExporter(*address, *timeout, *serverMetrics))
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
