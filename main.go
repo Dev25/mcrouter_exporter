@@ -92,7 +92,7 @@ func NewExporter(server string, timeout time.Duration, server_stats bool) *Expor
 		),
 		startTime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "start_time_seconds"),
-			"The timestamp of mcrouter daemon start.",
+			"UNIX timestamp of mcrouter startup time.",
 			nil,
 			nil,
 		),
@@ -104,7 +104,7 @@ func NewExporter(server string, timeout time.Duration, server_stats bool) *Expor
 		),
 		commandArgs: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "commandargs"),
-			"Command args used.",
+			"Command line arguments used to start mcrouter.",
 			[]string{"commandargs"},
 			nil,
 		),
@@ -152,19 +152,19 @@ func NewExporter(server string, timeout time.Duration, server_stats bool) *Expor
 		),
 		configFailures: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "config_failures"),
-			"How long ago (in seconds) mcrouter has reconfigured.",
+			"How many times mcrouter failed to reconfigure (if > 0 and growing, check the config is valid).",
 			nil,
 			nil,
 		),
 		configLastAttempt: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "config_last_attempt"),
-			"How long ago (in seconds) mcrouter has reconfigured.",
+			"UNIX timestamp of last time mcrouter tried to reconfigure.",
 			nil,
 			nil,
 		),
 		configLastSuccess: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "config_last_success"),
-			"How long ago (in seconds) mcrouter has reconfigured.",
+			"UNIX timestamp of last time mcrouter reconfigured successfully.",
 			nil,
 			nil,
 		),
