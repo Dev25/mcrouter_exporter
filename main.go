@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 )
@@ -733,7 +734,7 @@ func main() {
 	log.Infoln("Build context", version.BuildContext())
 
 	prometheus.MustRegister(NewExporter(*address, *timeout, *serverMetrics))
-	http.Handle(*metricsPath, prometheus.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>Mcrouter Exporter</title></head>
