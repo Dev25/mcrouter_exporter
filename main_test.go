@@ -37,9 +37,9 @@ func handleRequestServerStats(conn net.Conn, full bool) {
 		"STAT 10.1.1.2:11211:ascii:plain:notcompressed-1000 avg_latency_us:303.4 pending_reqs:0 inflight_reqs:0 avg_retrans_ratio:2 max_retrans_ratio:10 min_retrans_ratio:0 up:5\r\n" +
 		"END\r\n")
 	if full {
-		ret = []byte("STAT 10.1.1.1:11211:ascii:plain:notcompressed-1000 avg_latency_us:302.991 pending_reqs:0 inflight_reqs:0 avg_retrans_ratio:0 max_retrans_ratio:0 min_retrans_ratio:0 up:5; " +
+		ret = []byte("STAT 10.1.1.1:11211:ascii:plain:notcompressed-1000 avg_latency_us:302.991 pending_reqs:0 inflight_reqs:0 avg_retrans_ratio:0 max_retrans_ratio:0 min_retrans_ratio:0 up:5 soft_tko; " +
 			"deleted:4875 touched:33069 found:112675373 notfound:3493823 notstored:149776 stored:3250883 exists:2653 remote_error:32\r\n" +
-			"STAT 10.1.1.2:11211:ascii:plain:notcompressed-1000 avg_latency_us:303.4 pending_reqs:0 inflight_reqs:0 avg_retrans_ratio:2 max_retrans_ratio:10 min_retrans_ratio:0 up:5; " +
+			"STAT 10.1.1.2:11211:ascii:plain:notcompressed-1000 avg_latency_us:303.4 pending_reqs:0 inflight_reqs:0 avg_retrans_ratio:2 max_retrans_ratio:10 min_retrans_ratio:0 up:5 hard_tko; " +
 			"deleted:42 touched:3304 found:1175373 notfound:33823 notstored:0 stored:3250883 remote_error:55\r\n" +
 			"END\r\n")
 	}
@@ -106,13 +106,13 @@ func TestFullServerStatsParsing(t *testing.T) {
 					"avg_latency_us": "302.991", "avg_retrans_ratio": "0", "connect_timeout": "0", "deleted": "4875",
 					"exists": "2653", "found": "112675373", "inflight_reqs": "0", "max_retrans_ratio": "0", "min_retrans_ratio": "0",
 					"notfound": "3493823", "notstored": "149776", "pending_reqs": "0", "remote_error": "32", "stored": "3250883",
-					"timeout": "0", "tko": "0", "touched": "33069", "up": "5",
+					"timeout": "0", "soft_tko": "1", "hard_tko": "0", "touched": "33069", "up": "5",
 				}
 				expected["10.1.1.2:11211:ascii:plain:notcompressed-1000"] = map[string]string{
 					"avg_latency_us": "303.4", "avg_retrans_ratio": "2", "connect_timeout": "0", "deleted": "42", "exists": "0",
 					"found": "1175373", "inflight_reqs": "0", "max_retrans_ratio": "10", "min_retrans_ratio": "0", "notfound": "33823",
-					"notstored": "0", "pending_reqs": "0", "remote_error": "55", "stored": "3250883", "timeout": "0", "tko": "0",
-					"touched": "3304", "up": "5",
+					"notstored": "0", "pending_reqs": "0", "remote_error": "55", "stored": "3250883", "timeout": "0", "soft_tko": "0",
+					"hard_tko": "1", "touched": "3304", "up": "5",
 				}
 				So(stats, ShouldResemble, expected)
 			})
@@ -147,13 +147,14 @@ func TestServerStatsParsingAfterMcrouterBootstrap(t *testing.T) {
 					"avg_latency_us": "302.991", "avg_retrans_ratio": "0", "connect_timeout": "0", "deleted": "0",
 					"exists": "0", "found": "0", "inflight_reqs": "0", "max_retrans_ratio": "0",
 					"min_retrans_ratio": "0", "notfound": "0", "notstored": "0", "pending_reqs": "0",
-					"remote_error": "0", "stored": "0", "timeout": "0", "tko": "0", "touched": "0", "up": "5",
+					"remote_error": "0", "stored": "0", "timeout": "0", "soft_tko": "0", "hard_tko": "0", "touched": "0",
+					"up": "5",
 				}
 				expected["10.1.1.2:11211:ascii:plain:notcompressed-1000"] = map[string]string{
 					"avg_latency_us": "303.4", "avg_retrans_ratio": "2", "connect_timeout": "0", "deleted": "0", "exists": "0",
 					"found": "0", "inflight_reqs": "0", "max_retrans_ratio": "10", "min_retrans_ratio": "0", "notfound": "0",
-					"notstored": "0", "pending_reqs": "0", "remote_error": "0", "stored": "0", "timeout": "0", "tko": "0",
-					"touched": "0", "up": "5",
+					"notstored": "0", "pending_reqs": "0", "remote_error": "0", "stored": "0", "timeout": "0", "soft_tko": "0",
+					"hard_tko": "0", "touched": "0", "up": "5",
 				}
 				So(stats, ShouldResemble, expected)
 			})
