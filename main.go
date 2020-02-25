@@ -75,7 +75,8 @@ type Exporter struct {
 	serverMemcachedRemoteError    *prometheus.Desc
 	serverMemcachedConnectTimeout *prometheus.Desc
 	serverMemcachedTimeout        *prometheus.Desc
-	serverMemcachedTKO            *prometheus.Desc
+	serverMemcachedSoftTKO        *prometheus.Desc
+	serverMemcachedHardTKO        *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
@@ -368,9 +369,15 @@ func NewExporter(server string, timeout time.Duration, server_stats bool) *Expor
 			[]string{"server"},
 			nil,
 		),
-		serverMemcachedTKO: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "server_memcached_tko"),
-			"Number of times memcached has been marked as TKO (per-server metric).",
+		serverMemcachedSoftTKO: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_soft_tko"),
+			"Whether or not memcached has been marked as Soft TKO (per-server metric).",
+			[]string{"server"},
+			nil,
+		),
+		serverMemcachedHardTKO: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_memcached_hard_tko"),
+			"Whether or not memcached has been marked as Hard TKO (per-server metric).",
 			[]string{"server"},
 			nil,
 		),
@@ -428,7 +435,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		ch <- e.serverMemcachedRemoteError
 		ch <- e.serverMemcachedConnectTimeout
 		ch <- e.serverMemcachedTimeout
-		ch <- e.serverMemcachedTKO
+		ch <- e.serverMemcachedSoftTKO
+		ch <- e.serverMemcachedHardTKO
 	}
 }
 
@@ -507,7 +515,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Result Reply
 	// See ProxyRequestLogger.cpp
-	for _, op := range []string{"busy", "connect_error", "connect_timeout", "data_timeout", "error", "local_error", "tko"} {
+	for _, op := range []string{"busy", "connect_error", "connect_timeout", "data_timeout", "error", "local_error"} {
 		key := "result_" + op
 		ch <- prometheus.MustNewConstMetric(
 			e.results, prometheus.GaugeValue, parse(s, key), op)
@@ -578,7 +586,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(
 				e.serverMemcachedTimeout, prometheus.CounterValue, parse(metrics, "timeout"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedTKO, prometheus.CounterValue, parse(metrics, "tko"), server)
+				e.serverMemcachedSoftTKO, prometheus.GaugeValue, parse(metrics, "soft_tko"), server)
+			ch <- prometheus.MustNewConstMetric(
+				e.serverMemcachedHardTKO, prometheus.GaugeValue, parse(metrics, "hard_tko"), server)
 		}
 	}
 }
@@ -681,19 +691,33 @@ func getServerStats(conn net.Conn) (map[string]map[string]string, error) {
 
 		// The following for loops assume that the two lines to parse
 		// have the format: metric1:value1 metric2:value2 etc..
-		// The server_id string is the only exception since it is composed
-		// by more than one ':'.
+		// There are some special cases:
+		// 1) the server_id string is the only exception since it is composed
+		//    by more than one ':'.
+		// 2) 'soft_tko' and 'hard_tko' are server flags that appear only when one
+		//     shard is marked with that state, so they can be present or not
+		//     depending on the runtime environment. To keep a stable metric,
+		//     their values are initialized to 0 and turned to 1 only when the
+		//     flag is found.
+		SOFT_TKO_STATE := "soft_tko"
+		HARD_TKO_STATE := "hard_tko"
+		m[server_id][SOFT_TKO_STATE] = "0"
+		m[server_id][HARD_TKO_STATE] = "0"
 		for i := 2; i < len(server_metrics); i++ {
-			metric_value := strings.SplitN(server_metrics[i], ":", 2)
-			if len(metric_value) == 2 {
-				m[server_id][metric_value[0]] = metric_value[1]
+			if server_metrics[i] == SOFT_TKO_STATE || server_metrics[i] == HARD_TKO_STATE {
+				m[server_id][server_metrics[i]] = "1"
+			} else {
+				metric_value := strings.SplitN(server_metrics[i], ":", 2)
+				if len(metric_value) == 2 {
+					m[server_id][metric_value[0]] = metric_value[1]
+				}
 			}
 		}
 
 		// See carbon_result.thrift in mcrouter's codebase
 		// and also https://github.com/facebook/mcrouter/wiki/Error-Handling
 		memcached_states := []string{"deleted", "touched", "found", "notfound", "notstored", "stored",
-			"exists", "timeout", "connect_timeout", "tko", "remote_error",
+			"exists", "timeout", "connect_timeout", "remote_error",
 		}
 
 		// Set all the metrics to zero to create a baseline. mcrouter reports only
