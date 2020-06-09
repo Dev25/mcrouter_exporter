@@ -14,9 +14,6 @@ FLAGS := "-X github.com/prometheus/common/version.Version=${VERSION} \
 
 all: build
 
-setup:
-	dep ensure -v
-
 fmt:
 	@go fmt
 
