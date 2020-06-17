@@ -76,7 +76,7 @@ jobs:
 
       - name: Build image
         run: |
-          REPOSITORY=$(echo $GITHUB_REPOSITORY | tr '[A-Z]' '[a-z]')
+          REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')/
           TAG=${GITHUB_REF#"refs/heads/"}-${GITHUB_SHA:0:7}
           docker build -t docker.pkg.github.com/${REPOSITORY}:${TAG} .
 
@@ -86,7 +86,7 @@ jobs:
 
       - name: Push image
         run: |
-          REPOSITORY=$(echo $GITHUB_REPOSITORY | tr '[A-Z]' '[a-z]')
+          REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')/
           TAG=${GITHUB_REF#"refs/heads/"}-${GITHUB_SHA:0:7}
           docker push docker.pkg.github.com/${REPOSITORY}:${TAG}
         if: github.event_name == 'push'
