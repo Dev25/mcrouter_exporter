@@ -40,13 +40,13 @@ vet:
 	@go vet ${PKG_LIST}
 
 test: fmt vet
-	go test
+	go test -mod=vendor
 
 build:
-	go build -i -v -o ${OUT} -ldflags=$(FLAGS)
+	go build -mod=vendor -i -v -o ${OUT} -ldflags=$(FLAGS)
 
 docker:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -i -a -o ${OUT} -ldflags=$(FLAGS)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -i -a -o ${OUT} -ldflags=$(FLAGS)
 
 clean:
 	-@rm -f ${OUT}
