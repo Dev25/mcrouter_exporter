@@ -1,9 +1,11 @@
-FROM golang:alpine AS builder
-COPY . /go/src/github.com/dev25/mcrouter_exporter
-WORKDIR /go/src/github.com/dev25/mcrouter_exporter
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o /app
+# Builder
+FROM golang:1.14.4 as builder
+WORKDIR /workspace
+COPY . /workspace
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o mcrouter_exporter main.go
 
-FROM quay.io/prometheus/busybox:latest
-COPY --from=builder /app /usr/local/bin/mcrouter_exporter
-EXPOSE 9442
-CMD ["/usr/local/bin/mcrouter_exporter"]
+# Use distroless as final image
+FROM gcr.io/distroless/base-debian10
+WORKDIR /
+COPY --from=builder /workspace/mcrouter_exporter .
+ENTRYPOINT ["/mcrouter_exporter"]
