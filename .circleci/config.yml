@@ -11,8 +11,7 @@ jobs:
     steps:
       - checkout
       - run: go get github.com/smartystreets/goconvey
-      - run: go get -v ./...
-      - run: go test -v ./...
+      - run: make test
 
 workflows:
   test_and_build:
