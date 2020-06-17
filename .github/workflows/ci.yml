@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - distroless # TODO: Remove me
   pull_request:
 
 jobs:
