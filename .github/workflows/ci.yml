@@ -5,7 +5,6 @@ on:
     branches:
       - master
       - distroless # TODO: Remove me
-  pull_request:
 
 jobs:
   build:
@@ -78,15 +77,17 @@ jobs:
         run: |
           REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')
           TAG=${GITHUB_REF#"refs/heads/"}-${GITHUB_SHA:0:7}
+
           docker build -t docker.pkg.github.com/${REPOSITORY}:${TAG} .
+        if: github.event_name == 'push'
 
       - name: Login to GitHub Package Registry
         run: docker login docker.pkg.github.com -u $GITHUB_ACTOR -p ${{ secrets.GITHUB_TOKEN }}
         if: github.event_name == 'push'
 
-      - name: Push image
+      - name: Push images
         run: |
           REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')
-          TAG=${GITHUB_REF#"refs/heads/"}-${GITHUB_SHA:0:7}
-          docker push docker.pkg.github.com/${REPOSITORY}:${TAG}
+
+          docker push docker.pkg.github.com/${REPOSITORY}
         if: github.event_name == 'push'
