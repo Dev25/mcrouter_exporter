@@ -45,8 +45,8 @@ test: fmt vet
 build:
 	go build -mod=vendor -i -v -o ${OUT} -ldflags=$(FLAGS)
 
-docker:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=vendor -i -a -o ${OUT} -ldflags=$(FLAGS)
+build-docker:
+	CGO_ENABLED=0 go build -mod=vendor -i -a -o ${OUT} -ldflags=$(FLAGS)
 
 clean:
 	-@rm -f ${OUT}

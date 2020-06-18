@@ -2,7 +2,7 @@
 FROM golang:1.14.4 as builder
 WORKDIR /workspace
 COPY . /workspace
-RUN make docker
+RUN make build-docker
 
 # Use distroless as final image
 FROM gcr.io/distroless/base-debian10
