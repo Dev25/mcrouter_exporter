@@ -14,8 +14,7 @@ FLAGS := "-X github.com/prometheus/common/version.Version=${VERSION} \
 	-X github.com/prometheus/common/version.Revision=${REVISION} \
 	-X github.com/prometheus/common/version.BuildDate=${BUILD_DATE}"
 
-all: build
-
+all: fmt lint build
 
 bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
 	@ln -sf golangci-lint-${GOLANGCI_VERSION} bin/golangci-lint
@@ -32,23 +31,26 @@ lint: bin/golangci-lint ## Run linter
 fix: bin/golangci-lint ## Fix lint violations
 	bin/golangci-lint run --fix
 
-
+.PHONY: fmt
 fmt:
 	@go fmt
 
+.PHONY: vet
 vet:
 	@go vet ${PKG_LIST}
 
+.PHONY: test
 test: fmt vet
 	go test -mod=vendor
 
+.PHONY: build
 build:
 	go build -mod=vendor -i -v -o ${OUT} -ldflags=$(FLAGS)
 
+.PHONY: build-docker
 build-docker:
 	CGO_ENABLED=0 go build -mod=vendor -i -a -o ${OUT} -ldflags=$(FLAGS)
 
+.PHONY: clean
 clean:
 	-@rm -f ${OUT}
-
-.PHONY: all setup fmt test build clean
