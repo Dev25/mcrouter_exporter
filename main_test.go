@@ -49,24 +49,15 @@ func handleRequestServerStats(conn net.Conn, full bool) {
 
 func TestStatsParsing(t *testing.T) {
 	Convey("Given a remote mcrouter stats endpoint", t, func() {
+		server, client := net.Pipe()
 		go func() {
-			l, err := net.Listen("tcp", "localhost:9213")
-			if err != nil {
-				t.Fatal("Failed to create TCP Server:", err.Error())
-			}
-			defer l.Close()
-			for {
-				conn, err := l.Accept()
-				if err != nil {
-					t.Fatal("Error accepting:", err.Error())
-				}
-				go handleRequestStats(conn)
-			}
+			go handleRequestStats(server)
 		}()
-
 		Convey("When scraped by our client", func() {
-			client, _ := net.Dial("tcp", "localhost:9213")
-			stats, _ := getStats(client)
+			stats, err := getStats(client)
+			if err != nil {
+				t.Fatal(err)
+			}
 			Convey("It should parse the stats into a string map", func() {
 				expected := make(map[string]string)
 				expected["start_time"] = "1"
@@ -82,24 +73,16 @@ func TestStatsParsing(t *testing.T) {
 
 func TestFullServerStatsParsing(t *testing.T) {
 	Convey("Given a remote mcrouter stats server endpoint", t, func() {
+		server, client := net.Pipe()
 		go func() {
-			l, err := net.Listen("tcp", "localhost:9214")
-			if err != nil {
-				t.Fatal("Failed to create TCP Server:", err.Error())
-			}
-			defer l.Close()
-			for {
-				conn, err := l.Accept()
-				if err != nil {
-					t.Fatal("Error accepting:", err.Error())
-				}
-				go handleRequestServerStats(conn, true)
-			}
+			go handleRequestServerStats(server, true)
 		}()
 
 		Convey("When scraped by our client", func() {
-			client, _ := net.Dial("tcp", "localhost:9214")
-			stats, _ := getServerStats(client)
+			stats, err := getServerStats(client)
+			if err != nil {
+				t.Fatal(err)
+			}
 			Convey("It should parse the stats into a string map", func() {
 				expected := make(map[string]map[string]string)
 				expected["10.1.1.1:11211:ascii:plain:notcompressed-1000"] = map[string]string{
@@ -123,24 +106,16 @@ func TestFullServerStatsParsing(t *testing.T) {
 
 func TestServerStatsParsingAfterMcrouterBootstrap(t *testing.T) {
 	Convey("Given a remote mcrouter (without any commands processed yet) stats server server endpoint", t, func() {
+		server, client := net.Pipe()
 		go func() {
-			l, err := net.Listen("tcp", "localhost:9215")
-			if err != nil {
-				t.Fatal("Failed to create TCP Server:", err.Error())
-			}
-			defer l.Close()
-			for {
-				conn, err := l.Accept()
-				if err != nil {
-					t.Fatal("Error accepting:", err.Error())
-				}
-				go handleRequestServerStats(conn, false)
-			}
+			go handleRequestServerStats(server, false)
 		}()
 
 		Convey("When scraped by our client", func() {
-			client, _ := net.Dial("tcp", "localhost:9215")
-			stats, _ := getServerStats(client)
+			stats, err := getServerStats(client)
+			if err != nil {
+				t.Fatal(err)
+			}
 			Convey("It should parse the stats into a string map", func() {
 				expected := make(map[string]map[string]string)
 				expected["10.1.1.1:11211:ascii:plain:notcompressed-1000"] = map[string]string{
