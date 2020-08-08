@@ -568,11 +568,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(
 				e.serverMemcachedStored, prometheus.CounterValue, parse(metrics, "stored"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedNotStored, prometheus.CounterValue, parse(metrics, "not_stored"), server)
+				e.serverMemcachedNotStored, prometheus.CounterValue, parse(metrics, "notstored"), server)
 			ch <- prometheus.MustNewConstMetric(
 				e.serverMemcachedFound, prometheus.CounterValue, parse(metrics, "found"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedNotFound, prometheus.CounterValue, parse(metrics, "not_found"), server)
+				e.serverMemcachedNotFound, prometheus.CounterValue, parse(metrics, "notfound"), server)
 			ch <- prometheus.MustNewConstMetric(
 				e.serverMemcachedDeleted, prometheus.CounterValue, parse(metrics, "deleted"), server)
 			ch <- prometheus.MustNewConstMetric(
