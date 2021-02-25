@@ -3,6 +3,7 @@ module github.com/Dev25/mcrouter_exporter
 go 1.14
 
 require (
+	github.com/Masterminds/semver v1.5.0
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20191106031601-ce3c9ade29de // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect

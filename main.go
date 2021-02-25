@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -527,9 +528,30 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.resultAllCount, prometheus.CounterValue, parse(s, key+"_all_count"), op)
 	}
 
+	ver := strings.Fields(s["version"])
+	c, err := semver.NewConstraint(">= 39.0.0")
+	if err != nil {
+		// Handle constraint not being parsable.
+		log.Errorf("Failed to parse constraint: %s", err)
+	}
+
+	// Create a new semver variable based on version string
+	v, err := semver.NewVersion(ver[0])
+	if err != nil {
+		log.Errorf("Failed to parse version: %s", err)
+	}
+
+	// Check if the version meets the constraints. If version is greater than 39, variable is true
+	newVer := c.Check(v)
+
 	// Clients
-	ch <- prometheus.MustNewConstMetric(
-		e.clients, prometheus.CounterValue, parse(s, "num_clients"))
+	if newVer {
+		ch <- prometheus.MustNewConstMetric(
+			e.clients, prometheus.CounterValue, parse(s, "num_client_connections"))
+	} else {
+		ch <- prometheus.MustNewConstMetric(
+			e.clients, prometheus.CounterValue, parse(s, "num_clients"))
+	}
 
 	// Servers
 	for _, op := range []string{"closed", "down", "new", "up"} {
