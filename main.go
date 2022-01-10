@@ -12,9 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/promlog"
+	promlogflag "github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 )
 
@@ -22,11 +25,11 @@ const (
 	namespace = "mcrouter"
 )
 
-// Exporter collects metrics from a mcrouter server.
 type Exporter struct {
 	server       string
 	timeout      time.Duration
 	server_stats bool
+	logger       log.Logger
 
 	up                            *prometheus.Desc
 	startTime                     *prometheus.Desc
@@ -80,11 +83,12 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized exporter.
-func NewExporter(server string, timeout time.Duration, server_stats bool) *Exporter {
+func NewExporter(server string, timeout time.Duration, server_stats bool, logger log.Logger) *Exporter {
 	return &Exporter{
 		server:       server,
 		timeout:      timeout,
 		server_stats: server_stats,
+		logger:       logger,
 
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
@@ -452,7 +456,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	conn, err := net.DialTimeout(network, e.server, e.timeout)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
-		log.Errorf("Failed to collect stats from mcrouter: %s.", err)
+		level.Error(e.logger).Log("msg", "Failed to collect stats from mcrouter", "err", err)
 		return
 	}
 	defer conn.Close()
@@ -461,14 +465,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
-		log.Errorf("Failed to collect stats from mcrouter: %s", err)
+		level.Error(e.logger).Log("msg", "Failed to collect stats from mcrouter", "err", err)
 		return
 	}
 
 	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
 	// Parse basic stats
-	ch <- prometheus.MustNewConstMetric(e.startTime, prometheus.CounterValue, parse(s, "start_time"))
+	ch <- prometheus.MustNewConstMetric(e.startTime, prometheus.CounterValue, e.parse(s, "start_time"))
 	ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, s["version"])
 	ch <- prometheus.MustNewConstMetric(e.commandArgs, prometheus.GaugeValue, 1, s["commandargs"])
 
@@ -476,41 +480,41 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, op := range []string{"add", "append", "cas", "decr", "flushall", "flushre", "get", "gets", "incr", "metaget", "prepend", "replace", "touch", "set", "delete", "lease_get", "lease_set"} {
 		key := "cmd_" + op
 		ch <- prometheus.MustNewConstMetric(
-			e.commands, prometheus.GaugeValue, parse(s, key), op)
+			e.commands, prometheus.GaugeValue, e.parse(s, key), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.commandCount, prometheus.CounterValue, parse(s, key+"_count"), op)
+			e.commandCount, prometheus.CounterValue, e.parse(s, key+"_count"), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.commandOut, prometheus.CounterValue, parse(s, key+"_out"), op)
+			e.commandOut, prometheus.CounterValue, e.parse(s, key+"_out"), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.commandOutAll, prometheus.CounterValue, parse(s, key+"_out_all"), op)
+			e.commandOutAll, prometheus.CounterValue, e.parse(s, key+"_out_all"), op)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
-		e.devNullRequests, prometheus.CounterValue, parse(s, "dev_null_requests"))
+		e.devNullRequests, prometheus.CounterValue, e.parse(s, "dev_null_requests"))
 	ch <- prometheus.MustNewConstMetric(
-		e.duration, prometheus.GaugeValue, parse(s, "duration_us"))
+		e.duration, prometheus.GaugeValue, e.parse(s, "duration_us"))
 	ch <- prometheus.MustNewConstMetric(
-		e.fibersAllocated, prometheus.GaugeValue, parse(s, "fibers_allocated"))
+		e.fibersAllocated, prometheus.GaugeValue, e.parse(s, "fibers_allocated"))
 	ch <- prometheus.MustNewConstMetric(
-		e.proxyReqsProcessing, prometheus.GaugeValue, parse(s, "proxy_reqs_processing"))
+		e.proxyReqsProcessing, prometheus.GaugeValue, e.parse(s, "proxy_reqs_processing"))
 	ch <- prometheus.MustNewConstMetric(
-		e.proxyReqsWaiting, prometheus.GaugeValue, parse(s, "proxy_reqs_waiting"))
+		e.proxyReqsWaiting, prometheus.GaugeValue, e.parse(s, "proxy_reqs_waiting"))
 
 	// Config
 	ch <- prometheus.MustNewConstMetric(
-		e.configFailures, prometheus.CounterValue, parse(s, "config_failures"))
+		e.configFailures, prometheus.CounterValue, e.parse(s, "config_failures"))
 	ch <- prometheus.MustNewConstMetric(
-		e.configLastAttempt, prometheus.GaugeValue, parse(s, "config_last_attempt"))
+		e.configLastAttempt, prometheus.GaugeValue, e.parse(s, "config_last_attempt"))
 	ch <- prometheus.MustNewConstMetric(
-		e.configLastSuccess, prometheus.GaugeValue, parse(s, "config_last_success"))
+		e.configLastSuccess, prometheus.GaugeValue, e.parse(s, "config_last_success"))
 
 	// Request
 	for _, op := range []string{"error", "replied", "sent", "success"} {
 		key := "request_" + op
 		ch <- prometheus.MustNewConstMetric(
-			e.requests, prometheus.GaugeValue, parse(s, key), op)
+			e.requests, prometheus.GaugeValue, e.parse(s, key), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.requestCount, prometheus.CounterValue, parse(s, key+"_count"), op)
+			e.requestCount, prometheus.CounterValue, e.parse(s, key+"_count"), op)
 	}
 
 	// Result Reply
@@ -518,33 +522,33 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, op := range []string{"busy", "connect_error", "connect_timeout", "data_timeout", "error", "local_error", "tko"} {
 		key := "result_" + op
 		ch <- prometheus.MustNewConstMetric(
-			e.results, prometheus.GaugeValue, parse(s, key), op)
+			e.results, prometheus.GaugeValue, e.parse(s, key), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.resultCount, prometheus.CounterValue, parse(s, key+"_count"), op)
+			e.resultCount, prometheus.CounterValue, e.parse(s, key+"_count"), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.resultAll, prometheus.GaugeValue, parse(s, key+"_all"), op)
+			e.resultAll, prometheus.GaugeValue, e.parse(s, key+"_all"), op)
 		ch <- prometheus.MustNewConstMetric(
-			e.resultAllCount, prometheus.CounterValue, parse(s, key+"_all_count"), op)
+			e.resultAllCount, prometheus.CounterValue, e.parse(s, key+"_all_count"), op)
 	}
 
 	// Clients
 	ch <- prometheus.MustNewConstMetric(
-		e.clients, prometheus.CounterValue, parse(s, "num_clients"))
+		e.clients, prometheus.CounterValue, e.parse(s, "num_clients"))
 
 	// Servers
 	for _, op := range []string{"closed", "down", "new", "up"} {
 		key := "num_servers_" + op
 		ch <- prometheus.MustNewConstMetric(
-			e.servers, prometheus.GaugeValue, parse(s, key), op)
+			e.servers, prometheus.GaugeValue, e.parse(s, key), op)
 	}
 
 	// Process stats
 	ch <- prometheus.MustNewConstMetric(
-		e.cpuSeconds, prometheus.CounterValue, parse(s, "ps_user_time_sec")+parse(s, "ps_system_time_sec"))
-	ch <- prometheus.MustNewConstMetric(e.residentMemory, prometheus.CounterValue, parse(s, "ps_rss"))
-	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, parse(s, "ps_vsize"))
+		e.cpuSeconds, prometheus.CounterValue, e.parse(s, "ps_user_time_sec")+e.parse(s, "ps_system_time_sec"))
+	ch <- prometheus.MustNewConstMetric(e.residentMemory, prometheus.CounterValue, e.parse(s, "ps_rss"))
+	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, e.parse(s, "ps_vsize"))
 
-	ch <- prometheus.MustNewConstMetric(e.asynclogRequests, prometheus.CounterValue, parse(s, "asynclog_requests"))
+	ch <- prometheus.MustNewConstMetric(e.asynclogRequests, prometheus.CounterValue, e.parse(s, "asynclog_requests"))
 
 	if e.server_stats {
 		// Per-server stats
@@ -552,56 +556,56 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		if err != nil {
 			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
-			log.Errorf("Failed to collect server stats from mcrouter: %s", err)
+			level.Error(e.logger).Log("msg", "Failed to collect server stats from mcrouter", "err", err)
 			return
 		}
 
 		for server, metrics := range s1 {
 			ch <- prometheus.MustNewConstMetric(
-				e.serverDuration, prometheus.GaugeValue, parse(metrics, "avg_latency_us"), server)
+				e.serverDuration, prometheus.GaugeValue, e.parse(metrics, "avg_latency_us"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverProxyReqsProcessing, prometheus.GaugeValue, parse(metrics, "pending_reqs"), server)
+				e.serverProxyReqsProcessing, prometheus.GaugeValue, e.parse(metrics, "pending_reqs"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverProxyInflightReqs, prometheus.GaugeValue, parse(metrics, "inflight_reqs"), server)
+				e.serverProxyInflightReqs, prometheus.GaugeValue, e.parse(metrics, "inflight_reqs"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverProxyRetransRatio, prometheus.GaugeValue, parse(metrics, "avg_retrans_ratio"), server)
+				e.serverProxyRetransRatio, prometheus.GaugeValue, e.parse(metrics, "avg_retrans_ratio"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedStored, prometheus.CounterValue, parse(metrics, "stored"), server)
+				e.serverMemcachedStored, prometheus.CounterValue, e.parse(metrics, "stored"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedNotStored, prometheus.CounterValue, parse(metrics, "notstored"), server)
+				e.serverMemcachedNotStored, prometheus.CounterValue, e.parse(metrics, "notstored"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedFound, prometheus.CounterValue, parse(metrics, "found"), server)
+				e.serverMemcachedFound, prometheus.CounterValue, e.parse(metrics, "found"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedNotFound, prometheus.CounterValue, parse(metrics, "notfound"), server)
+				e.serverMemcachedNotFound, prometheus.CounterValue, e.parse(metrics, "notfound"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedDeleted, prometheus.CounterValue, parse(metrics, "deleted"), server)
+				e.serverMemcachedDeleted, prometheus.CounterValue, e.parse(metrics, "deleted"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedTouched, prometheus.CounterValue, parse(metrics, "touched"), server)
+				e.serverMemcachedTouched, prometheus.CounterValue, e.parse(metrics, "touched"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedExists, prometheus.CounterValue, parse(metrics, "exists"), server)
+				e.serverMemcachedExists, prometheus.CounterValue, e.parse(metrics, "exists"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedRemoteError, prometheus.CounterValue, parse(metrics, "remote_error"), server)
+				e.serverMemcachedRemoteError, prometheus.CounterValue, e.parse(metrics, "remote_error"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedConnectTimeout, prometheus.CounterValue, parse(metrics, "connect_timeout"), server)
+				e.serverMemcachedConnectTimeout, prometheus.CounterValue, e.parse(metrics, "connect_timeout"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedTimeout, prometheus.CounterValue, parse(metrics, "timeout"), server)
+				e.serverMemcachedTimeout, prometheus.CounterValue, e.parse(metrics, "timeout"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedSoftTKO, prometheus.GaugeValue, parse(metrics, "soft_tko"), server)
+				e.serverMemcachedSoftTKO, prometheus.GaugeValue, e.parse(metrics, "soft_tko"), server)
 			ch <- prometheus.MustNewConstMetric(
-				e.serverMemcachedHardTKO, prometheus.GaugeValue, parse(metrics, "hard_tko"), server)
+				e.serverMemcachedHardTKO, prometheus.GaugeValue, e.parse(metrics, "hard_tko"), server)
 		}
 	}
 }
 
 // Parse a string into a 64 bit float suitable for  Prometheus
-func parse(stats map[string]string, key string) float64 {
+func (e *Exporter) parse(stats map[string]string, key string) float64 {
 	val, ok := stats[key]
 	if !ok {
 		return 0.0
 	}
 	v, err := strconv.ParseFloat(val, 64)
 	if err != nil {
-		log.Errorf("Failed to parse %s %q: %s", key, stats[key], err)
+		level.Error(e.logger).Log("msg", "Failed to parse", "key", key, "stat", stats[key], "err", err)
 		v = math.NaN()
 	}
 	return v
@@ -746,6 +750,8 @@ func main() {
 		listenAddress = flag.String("web.listen-address", ":9442", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		serverMetrics = flag.Bool("mcrouter.server_metrics", false, "Collect per-server metrics.")
+		logLevel      = flag.String(promlogflag.LevelFlagName, "info", promlogflag.LevelFlagHelp)
+		logFormat     = flag.String(promlogflag.FormatFlagName, "logfmt", promlogflag.FormatFlagHelp)
 	)
 	flag.Parse()
 
@@ -754,10 +760,26 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Infoln("Starting mcrouter_exporter", version.Info())
-	log.Infoln("Build context", version.BuildContext())
+	logConfig := &promlog.Config{}
+	logConfig.Level = &promlog.AllowedLevel{}
+	if err := logConfig.Level.Set(*logLevel); err != nil {
+		fmt.Fprintln(os.Stdout, "Invalid log level:", *logLevel)
+		os.Exit(1)
+	}
+	logConfig.Format = &promlog.AllowedFormat{}
+	if err := logConfig.Format.Set(*logFormat); err != nil {
+		fmt.Fprintln(os.Stdout, "Invalid log format:", *logFormat)
+		os.Exit(1)
+	}
 
-	prometheus.MustRegister(NewExporter(*address, *timeout, *serverMetrics))
+	logger := promlog.New(logConfig)
+
+	// Exporter collects metrics from a mcrouter server.
+
+	level.Info(logger).Log("msg", "Starting mcrouter_exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+
+	prometheus.MustRegister(NewExporter(*address, *timeout, *serverMetrics, logger))
 	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		//nolint:errcheck
@@ -769,6 +791,9 @@ func main() {
              </body>
              </html>`))
 	})
-	log.Infoln("Starting HTTP server on", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	level.Info(logger).Log("msg", "Starting HTTP server on", "address", *listenAddress)
+	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
 }
