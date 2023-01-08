@@ -2,12 +2,11 @@ version: 2.1
 
 orbs:
   docker: circleci/docker@0.5.17
-
 jobs:
   test:
     docker:
-      - image: circleci/golang:1.17
-    working_directory: /go/src/github.com/Dev25/mcrouter_exporter
+      - image: cimg/go:1.19.4
+    working_directory: ~/repo
     steps:
       - checkout
       - run: go install github.com/smartystreets/goconvey@latest
