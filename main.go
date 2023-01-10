@@ -58,7 +58,7 @@ type Exporter struct {
 	resultShadow                  *prometheus.Desc
 	resultAll                     *prometheus.Desc
 	resultAllCount                *prometheus.Desc
-	numClients                    *prometheus.Desc
+	clients                       *prometheus.Desc
 	numClientConnections          *prometheus.Desc
 	servers                       *prometheus.Desc
 	cpuSeconds                    *prometheus.Desc
@@ -205,8 +205,8 @@ func NewExporter(server string, timeout time.Duration, server_stats bool, logger
 			nil,
 			nil,
 		),
-		numClients: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "num_clients"),
+		clients: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "clients"),
 			"Number of connected clients (prior to version 39).",
 			nil,
 			nil,
@@ -424,7 +424,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.resultShadow
 	ch <- e.resultAll
 	ch <- e.resultAllCount
-	ch <- e.numClients
+	ch <- e.clients
 	ch <- e.numClientConnections
 	ch <- e.servers
 	ch <- e.cpuSeconds
@@ -541,7 +541,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Clients
 	ch <- prometheus.MustNewConstMetric(
-		e.numClients, prometheus.CounterValue, e.parse(s, "num_clients"))
+		e.clients, prometheus.CounterValue, e.parse(s, "num_clients"))
 	ch <- prometheus.MustNewConstMetric(
 		e.numClientConnections, prometheus.GaugeValue, e.parse(s, "num_client_connections"))
 
