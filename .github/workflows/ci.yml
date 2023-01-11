@@ -66,6 +66,7 @@ jobs:
       - name: Push images
         run: |
           REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')
+          TAG=${GITHUB_REF#"refs/heads/"}-${GITHUB_SHA:0:7}
 
-          docker push ghcr.io/${REPOSITORY}
+          docker push ghcr.io/${REPOSITORY}:${TAG}
         if: github.event_name == 'push'
