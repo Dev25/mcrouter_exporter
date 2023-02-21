@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      VERBOSE: 1
+      GOFLAGS: -mod=readonly
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.20
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: make build
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      VERBOSE: 1
+      GOFLAGS: -mod=readonly
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.20
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Test
+        run: make test
+
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build image
+        run: |
+          REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')
+          TAG=${GITHUB_REF#"refs/tags/"}
+
+          docker build -t ghcr.io/${REPOSITORY}:${TAG} .
+        if: github.event_name == 'push'
+
+      - name: Login to GitHub Package Registry
+        run: docker login ghcr.io -u $GITHUB_ACTOR -p ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name == 'push'
+
+      - name: Push images
+        run: |
+          REPOSITORY=$(echo $GITHUB_REPOSITORY/${{ github.event.repository.name }} | tr '[A-Z]' '[a-z]')
+          TAG=${GITHUB_REF#"refs/tags/"}
+
+          docker push ghcr.io/${REPOSITORY}:${TAG}
+        if: github.event_name == 'push'
