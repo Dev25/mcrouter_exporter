@@ -5,7 +5,7 @@ orbs:
 jobs:
   test:
     docker:
-      - image: cimg/go:1.19.4
+      - image: cimg/go:1.20.1
     working_directory: ~/repo
     steps:
       - checkout

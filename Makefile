@@ -45,11 +45,11 @@ test: fmt vet
 
 .PHONY: build
 build:
-	go build -mod=vendor -i -v -o ${OUT} -ldflags=$(FLAGS)
+	go build -mod=vendor -v -o ${OUT} -ldflags=$(FLAGS)
 
 .PHONY: build-docker
 build-docker:
-	CGO_ENABLED=0 go build -mod=vendor -i -a -o ${OUT} -ldflags=$(FLAGS)
+	CGO_ENABLED=0 go build -mod=vendor -a -o ${OUT} -ldflags=$(FLAGS)
 
 .PHONY: clean
 clean:
