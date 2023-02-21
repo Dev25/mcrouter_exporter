@@ -18,7 +18,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promlog"
 	promlogflag "github.com/prometheus/common/promlog/flag"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"github.com/prometheus/common/version"
 )
 
