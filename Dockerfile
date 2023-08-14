@@ -1,5 +1,5 @@
 # Builder
-FROM golang:1.20 as builder
+FROM golang:1.21 as builder
 WORKDIR /workspace
 COPY . /workspace
 RUN make build-docker
