@@ -32,6 +32,10 @@ The exporter collects a number of statistics from mcrouter:
 ```
 # HELP mcrouter_asynclog_requests Number of failed deletes written to spool file.
 # TYPE mcrouter_asynclog_requests counter
+# HELP mcrouter_asynclog_requests_rate Number of requests that were attempted to be spooled to disk.
+# TYPE mcrouter_asynclog_requests_rate gauge
+# HELP mcrouter_asynclog_spool_success_rate Number of requests that were spooled successfully.
+# TYPE mcrouter_asynclog_spool_success_rate gauge
 # HELP mcrouter_clients Number of connected clients.
 # TYPE mcrouter_clients counter
 # HELP mcrouter_command_count Total number of received requests drilled down by operation.

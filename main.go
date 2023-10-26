@@ -65,6 +65,8 @@ type Exporter struct {
 	residentMemory                *prometheus.Desc
 	virtualMemory                 *prometheus.Desc
 	asynclogRequests              *prometheus.Desc
+	asynclogRequestsRate          *prometheus.Desc
+	asynclogSpoolSuccessRate      *prometheus.Desc
 	serverDuration                *prometheus.Desc
 	serverProxyReqsProcessing     *prometheus.Desc
 	serverProxyInflightReqs       *prometheus.Desc
@@ -296,6 +298,18 @@ func NewExporter(server string, timeout time.Duration, server_stats bool, logger
 			nil,
 			nil,
 		),
+		asynclogRequestsRate: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "asynclog_requests_rate"),
+			"Number of requests that were attempted to be spooled to disk.",
+			nil,
+			nil,
+		),
+		asynclogSpoolSuccessRate: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "asynclog_spool_success_rate"),
+			"Number of requests that were spooled successfully.",
+			nil,
+			nil,
+		),
 		serverDuration: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "server_duration_us"),
 			"Average time of processing a request per-server (i.e. receiving request and sending a reply).",
@@ -431,6 +445,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.residentMemory
 	ch <- e.virtualMemory
 	ch <- e.asynclogRequests
+	ch <- e.asynclogRequestsRate
+	ch <- e.asynclogSpoolSuccessRate
 
 	if e.server_stats {
 		ch <- e.serverDuration
@@ -559,6 +575,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.virtualMemory, prometheus.CounterValue, e.parse(s, "ps_vsize"))
 
 	ch <- prometheus.MustNewConstMetric(e.asynclogRequests, prometheus.CounterValue, e.parse(s, "asynclog_requests"))
+	ch <- prometheus.MustNewConstMetric(e.asynclogRequestsRate, prometheus.GaugeValue, e.parse(s, "asynclog_requests_rate"))
+	ch <- prometheus.MustNewConstMetric(e.asynclogSpoolSuccessRate, prometheus.GaugeValue, e.parse(s, "asynclog_spool_success_rate"))
 
 	if e.server_stats {
 		// Per-server stats
