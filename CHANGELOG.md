@@ -1,4 +1,8 @@
 
+## 0.3.1 / 2023-12-23
+
+* [FIXED] CI Releasing to quay.io
+
 ## 0.3.0 / 2023-12-23
 
 * [CHANGE] Update to Go 1.21
