@@ -1,4 +1,9 @@
 
+## 0.3.0 / 2023-12-23
+
+* [CHANGE] Update to Go 1.21
+* [ENHANCEMENT] Add new rate asynclog metrics #38
+
 ## 0.2.0 / 2023-02-21
 
 * [CHANGE] Update to Go 1.20
