@@ -1,8 +1,10 @@
-## 0.3.2 / 2024-03-19
+## 0.4.0 / 2024-03-27
 
+* [CHANGE] Update distroless/base-debian11
+* [CHANGE] Update to Go 1.22
 * [CHANGE] Update dependencies
-
-This addresses CVE-2024-24786 which is not exploitable in the exporter, but set off security scanners.
+* [CHANGE] Add support for multi arch/arm64 images hosted on ghcr.io
+* [CHANGE] Github hosted image path to ghcr.io/dev25/mcrouter_exporter
 
 ## 0.3.1 / 2023-12-23
 
