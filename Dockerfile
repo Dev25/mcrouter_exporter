@@ -5,7 +5,7 @@ COPY . /workspace
 RUN make build-docker
 
 # Use distroless as final image
-FROM gcr.io/distroless/base-debian11@sha256:6c1e34e2f084fe6df17b8bceb1416f1e11af0fcdb1cef11ee4ac8ae127cb507c
+FROM gcr.io/distroless/base-debian11@sha256:280852156756ea3f39f9e774a30346f2e756244e1f432aea3061c4ac85d90a66
 WORKDIR /
 COPY --from=builder /workspace/mcrouter_exporter .
 ENTRYPOINT ["/mcrouter_exporter"]
