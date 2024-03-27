@@ -1,3 +1,8 @@
+## 0.3.2 / 2024-03-19
+
+* [CHANGE] Update dependencies
+
+This addresses CVE-2024-24786 which is not exploitable in the exporter, but set off security scanners.
 
 ## 0.3.1 / 2023-12-23
 
