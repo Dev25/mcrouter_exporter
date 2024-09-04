@@ -20,7 +20,7 @@ func handleRequestStats(conn net.Conn) {
 	if err != nil {
 		fmt.Println("Error reading:", err.Error())
 	}
-	ret := []byte("STAT start_time 1\r\nSTAT version 0.0\r\nSTAT fibers_allocated 1\r\nSTAT commandargs --debug-fifo-root /var/lib/mcrouter/fifos --test-mode\r\nEND\r\n")
+	ret := []byte("STAT start_time 1\r\nSTAT version 0.0\r\nSTAT fibers_allocated 1\r\nSTAT fibers_pool_size 1\r\nSTAT commandargs --debug-fifo-root /var/lib/mcrouter/fifos --test-mode\r\nEND\r\n")
 	conn.Write(ret)
 	conn.Close()
 }
@@ -63,6 +63,7 @@ func TestStatsParsing(t *testing.T) {
 				expected["start_time"] = "1"
 				expected["version"] = "0.0"
 				expected["fibers_allocated"] = "1"
+				expected["fibers_pool_size"] = "1"
 				expected["commandargs"] = "--debug-fifo-root /var/lib/mcrouter/fifos --test-mode"
 				So(stats, ShouldResemble, expected)
 			})
