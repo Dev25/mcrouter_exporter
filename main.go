@@ -48,6 +48,7 @@ type Exporter struct {
 	devNullRequests               *prometheus.Desc
 	duration                      *prometheus.Desc
 	fibersAllocated               *prometheus.Desc
+	fibersPoolSize                *prometheus.Desc
 	proxyReqsProcessing           *prometheus.Desc
 	proxyReqsWaiting              *prometheus.Desc
 	requests                      *prometheus.Desc
@@ -192,6 +193,12 @@ func NewExporter(server string, timeout time.Duration, server_stats bool, logger
 		fibersAllocated: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "fibers_allocated"),
 			"Number of fibers (lightweight threads) created by mcrouter.",
+			nil,
+			nil,
+		),
+		fibersPoolSize: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "fibers_pool_size"),
+			"Number of fibers (lightweight threads) created by mcrouter that are currently in the free pool.",
 			nil,
 			nil,
 		),
@@ -519,6 +526,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.duration, prometheus.GaugeValue, e.parse(s, "duration_us"))
 	ch <- prometheus.MustNewConstMetric(
 		e.fibersAllocated, prometheus.GaugeValue, e.parse(s, "fibers_allocated"))
+	ch <- prometheus.MustNewConstMetric(
+		e.fibersPoolSize, prometheus.GaugeValue, e.parse(s, "fibers_pool_size"))
 	ch <- prometheus.MustNewConstMetric(
 		e.proxyReqsProcessing, prometheus.GaugeValue, e.parse(s, "proxy_reqs_processing"))
 	ch <- prometheus.MustNewConstMetric(
