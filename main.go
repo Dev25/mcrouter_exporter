@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"net/http"
@@ -26,10 +28,11 @@ const (
 )
 
 type Exporter struct {
-	server       string
-	timeout      time.Duration
-	server_stats bool
-	logger       log.Logger
+	server         string
+	timeout        time.Duration
+	server_stats   bool
+	admin_requests bool
+	logger         log.Logger
 
 	up                            *prometheus.Desc
 	startTime                     *prometheus.Desc
@@ -84,15 +87,21 @@ type Exporter struct {
 	serverMemcachedTimeout        *prometheus.Desc
 	serverMemcachedSoftTKO        *prometheus.Desc
 	serverMemcachedHardTKO        *prometheus.Desc
+	adminRequestVersion           *prometheus.Desc
+	adminRequestConfigAge         *prometheus.Desc
+	adminRequestConfigFile        *prometheus.Desc
+	adminRequestHostId            *prometheus.Desc
+	adminRequestConfigMD5Digest   *prometheus.Desc
 }
 
 // NewExporter returns an initialized exporter.
-func NewExporter(server string, timeout time.Duration, server_stats bool, logger log.Logger) *Exporter {
+func NewExporter(server string, timeout time.Duration, server_stats bool, admin_requests bool, logger log.Logger) *Exporter {
 	return &Exporter{
-		server:       server,
-		timeout:      timeout,
-		server_stats: server_stats,
-		logger:       logger,
+		server:         server,
+		timeout:        timeout,
+		server_stats:   server_stats,
+		admin_requests: admin_requests,
+		logger:         logger,
 
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
@@ -413,6 +422,36 @@ func NewExporter(server string, timeout time.Duration, server_stats bool, logger
 			[]string{"server"},
 			nil,
 		),
+		adminRequestVersion: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "admin_request_version"),
+			"Version string of the build (same string as returned by version).",
+			[]string{"version"},
+			nil,
+		),
+		adminRequestConfigAge: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "admin_request_config_age"),
+			"How long, in seconds, since last config reload.",
+			nil,
+			nil,
+		),
+		adminRequestConfigFile: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "admin_request_config_file"),
+			"Config file location (error if configured from string).",
+			[]string{"file"},
+			nil,
+		),
+		adminRequestHostId: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "admin_request_host_id"),
+			"Hostid of this mcrouter instance, an unsigned 32-bit integer in decimal.",
+			[]string{"host_id"},
+			nil,
+		),
+		adminRequestConfigMD5Digest: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "admin_request_config_md5_digest"),
+			"Current config's md5 hash. Note that this only specifies the main config file's md5 and ignores any additional tracked files.",
+			[]string{"hash"},
+			nil,
+		),
 	}
 }
 
@@ -472,6 +511,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 		ch <- e.serverMemcachedTimeout
 		ch <- e.serverMemcachedSoftTKO
 		ch <- e.serverMemcachedHardTKO
+	}
+
+	if e.admin_requests {
+		ch <- e.adminRequestVersion
+		ch <- e.adminRequestConfigAge
+		ch <- e.adminRequestConfigFile
+		ch <- e.adminRequestHostId
+		ch <- e.adminRequestConfigMD5Digest
 	}
 }
 
@@ -632,6 +679,65 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				e.serverMemcachedHardTKO, prometheus.GaugeValue, e.parse(metrics, "hard_tko"), server)
 		}
 	}
+
+	if e.admin_requests {
+		version, err := getAdminRequest(conn, "__mcrouter__.version")
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			level.Error(e.logger).Log("msg", "Failed to collect version", "err", err)
+			return
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			e.adminRequestVersion, prometheus.GaugeValue, 1, string(version))
+
+		configAgeStr, err := getAdminRequest(conn, "__mcrouter__.config_age")
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			level.Error(e.logger).Log("msg", "Failed to collect config age", "err", err)
+			return
+		}
+
+		configAge, err := strconv.ParseFloat(string(configAgeStr), 64)
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			level.Error(e.logger).Log("msg", "Failed to collect config age", "err", err)
+			return
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			e.adminRequestConfigAge, prometheus.GaugeValue, configAge)
+
+		configFile, err := getAdminRequest(conn, "__mcrouter__.config_file")
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			level.Error(e.logger).Log("msg", "Failed to collect config file", "err", err)
+			return
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			e.adminRequestConfigFile, prometheus.GaugeValue, 1, string(configFile))
+
+		hostId, err := getAdminRequest(conn, "__mcrouter__.hostid")
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			level.Error(e.logger).Log("msg", "Failed to collect host id", "err", err)
+			return
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			e.adminRequestHostId, prometheus.GaugeValue, 1, string(hostId))
+
+		config_md5_digest, err := getAdminRequest(conn, "__mcrouter__.config_md5_digest")
+		if err != nil {
+			ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
+			level.Error(e.logger).Log("msg", "Failed to collect admin config_md5_digest from mcrouter", "err", err)
+			return
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			e.adminRequestConfigMD5Digest, prometheus.GaugeValue, 1, string(config_md5_digest))
+	}
 }
 
 // Parse a string into a 64 bit float suitable for  Prometheus
@@ -779,6 +885,71 @@ func getServerStats(conn net.Conn) (map[string]map[string]string, error) {
 	return m, nil
 }
 
+func getAdminRequest(conn net.Conn, request string) ([]byte, error) {
+	var value []byte
+	fmt.Fprintf(conn, "get "+request+"\r\n")
+	reader := bufio.NewReader(conn)
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+
+		if line == "END\r\n" {
+			break
+		}
+
+		it := new(item)
+		size, err := scanGetResponseLine(line, it)
+		if err != nil {
+			return nil, err
+		}
+
+		it.Value = make([]byte, size+2)
+		_, err = io.ReadFull(reader, it.Value)
+		if err != nil {
+			it.Value = nil
+			return nil, err
+		}
+		if !bytes.HasSuffix(it.Value, []byte("\r\n")) {
+			it.Value = nil
+			return nil, fmt.Errorf("memcache: corrupt get result read")
+		}
+
+		value = it.Value[:size]
+	}
+
+	return value, nil
+}
+
+func scanGetResponseLine(line string, it *item) (size int, err error) {
+	pattern := "VALUE %s %d %d\r\n"
+	dest := []interface{}{&it.Key, &it.Flags, &size}
+	n, err := fmt.Sscanf(line, pattern, dest...)
+	if err != nil || n != len(dest) {
+		return -1, fmt.Errorf("memcache: unexpected line in get response: %q", line)
+	}
+	return size, nil
+}
+
+type item struct {
+	// Key is the Item's key (250 bytes maximum).
+	Key string
+
+	// Value is the Item's value.
+	Value []byte
+
+	// Flags are server-opaque flags whose semantics are entirely
+	// up to the app.
+	Flags uint32
+
+	// Expiration is the cache expiration time, in seconds: either a relative
+	// time from now (up to 1 month), or an absolute Unix epoch time.
+	// Zero means the Item has no expiration time.
+	Expiration int32
+}
+
 func main() {
 	var (
 		address       = flag.String("mcrouter.address", "localhost:5000", "mcrouter server TCP address (tcp4/tcp6) or UNIX socket path")
@@ -787,6 +958,7 @@ func main() {
 		listenAddress = flag.String("web.listen-address", ":9442", "Address to listen on for web interface and telemetry.")
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		serverMetrics = flag.Bool("mcrouter.server_metrics", false, "Collect per-server metrics.")
+		adminRequests = flag.Bool("mcrouter.admin_requests", false, "Collect admin requests.")
 		logLevel      = flag.String(promlogflag.LevelFlagName, "info", promlogflag.LevelFlagHelp)
 		logFormat     = flag.String(promlogflag.FormatFlagName, "logfmt", promlogflag.FormatFlagHelp)
 	)
@@ -816,7 +988,7 @@ func main() {
 	level.Info(logger).Log("msg", "Starting mcrouter_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 
-	prometheus.MustRegister(NewExporter(*address, *timeout, *serverMetrics, logger))
+	prometheus.MustRegister(NewExporter(*address, *timeout, *serverMetrics, *adminRequests, logger))
 	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		//nolint:errcheck
