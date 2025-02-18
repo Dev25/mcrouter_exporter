@@ -1,3 +1,9 @@
+## 0.5.0 / 2025-02-18
+
+* [CHANGE] Update to Go 1.24
+* [CHANGE] Update distroless/base-debian11
+* [ENHANCEMENT] Export fiber pool size stat
+
 ## 0.4.0 / 2024-03-27
 
 * [CHANGE] Update distroless/base-debian11
