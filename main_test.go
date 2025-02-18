@@ -47,6 +47,36 @@ func handleRequestServerStats(conn net.Conn, full bool) {
 	conn.Close()
 }
 
+func handleAdminRequest(conn net.Conn) {
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("Error reading:", err.Error())
+	}
+
+	var ret []byte
+
+	command := string(buf[:n])
+
+	switch command {
+	case "get __mcrouter__.version\r\n":
+		ret = []byte("VALUE __mcrouter__.version 0 15\r\n40.0.0 mcrouter\r\nEND\r\n")
+	case "get __mcrouter__.config_age\r\n":
+		ret = []byte("VALUE __mcrouter__.config_age 0 7\r\n1040469\r\nEND\r\n")
+	case "get __mcrouter__.config_file\r\n":
+		ret = []byte("VALUE __mcrouter__.config_file 0 32\r\n/opt/mcrouter/config/config.json\r\nEND\r\n")
+	case "get __mcrouter__.hostid\r\n":
+		ret = []byte("VALUE __mcrouter__.hostid 0 10\r\n4079863250\r\nEND\r\n")
+	case "get __mcrouter__.config_md5_digest\r\n":
+		ret = []byte("VALUE __mcrouter__.config_md5_digest 0 32\r\n2aa22ce671e9fdf6a7bb762f9a6cb0cc\r\nEND\r\n")
+	default:
+		ret = []byte("unknown command\r\nEND\r\n")
+	}
+
+	conn.Write(ret)
+	conn.Close()
+}
+
 func TestStatsParsing(t *testing.T) {
 	Convey("Given a remote mcrouter stats endpoint", t, func() {
 		server, client := net.Pipe()
@@ -136,5 +166,97 @@ func TestServerStatsParsingAfterMcrouterBootstrap(t *testing.T) {
 			})
 		})
 
+	})
+}
+
+func TestAdminRequestParsing(t *testing.T) {
+	Convey("Given a remote mcrouter admin request server version", t, func() {
+		server, client := net.Pipe()
+		go func() {
+			go handleAdminRequest(server)
+		}()
+
+		Convey("When scraped by our client", func() {
+			data, err := getAdminRequest(client, "__mcrouter__.version")
+			if err != nil {
+				t.Fatal(err)
+			}
+			Convey("It should parse the version", func() {
+				expected := []byte("40.0.0 mcrouter")
+				So(data, ShouldResemble, expected)
+			})
+		})
+	})
+
+	Convey("Given a remote mcrouter admin request server config_age", t, func() {
+		server, client := net.Pipe()
+		go func() {
+			go handleAdminRequest(server)
+		}()
+
+		Convey("When scraped by our client", func() {
+			data, err := getAdminRequest(client, "__mcrouter__.config_age")
+			if err != nil {
+				t.Fatal(err)
+			}
+			Convey("It should parse the config age", func() {
+				expected := []byte("1040469")
+				So(data, ShouldResemble, expected)
+			})
+		})
+	})
+
+	Convey("Given a remote mcrouter admin request server config_file", t, func() {
+		server, client := net.Pipe()
+		go func() {
+			go handleAdminRequest(server)
+		}()
+
+		Convey("When scraped by our client", func() {
+			data, err := getAdminRequest(client, "__mcrouter__.config_file")
+			if err != nil {
+				t.Fatal(err)
+			}
+			Convey("It should parse the config file", func() {
+				expected := []byte("/opt/mcrouter/config/config.json")
+				So(data, ShouldResemble, expected)
+			})
+		})
+	})
+
+	Convey("Given a remote mcrouter admin request server hostid", t, func() {
+		server, client := net.Pipe()
+		go func() {
+			go handleAdminRequest(server)
+		}()
+
+		Convey("When scraped by our client", func() {
+			data, err := getAdminRequest(client, "__mcrouter__.hostid")
+			if err != nil {
+				t.Fatal(err)
+			}
+			Convey("It should parse the hostid", func() {
+				expected := []byte("4079863250")
+				So(data, ShouldResemble, expected)
+			})
+		})
+	})
+
+	Convey("Given a remote mcrouter admin request server config_md5_digest", t, func() {
+		server, client := net.Pipe()
+		go func() {
+			go handleAdminRequest(server)
+		}()
+
+		Convey("When scraped by our client", func() {
+			data, err := getAdminRequest(client, "__mcrouter__.config_md5_digest")
+			if err != nil {
+				t.Fatal(err)
+			}
+			Convey("It should parse the config_md5_digest", func() {
+				expected := []byte("2aa22ce671e9fdf6a7bb762f9a6cb0cc")
+				So(data, ShouldResemble, expected)
+			})
+		})
 	})
 }
